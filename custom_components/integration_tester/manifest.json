@@ -1,0 +1,11 @@
+{
+  "domain": "integration_tester",
+  "name": "Integration Tester",
+  "codeowners": ["@raman325"],
+  "config_flow": true,
+  "documentation": "https://github.com/raman325/ha-integration-tester",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/raman325/ha-integration-tester/issues",
+  "requirements": ["aiogithubapi>=24.6.0"],
+  "version": "0.0.0"
+}

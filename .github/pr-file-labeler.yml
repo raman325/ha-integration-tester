@@ -1,0 +1,38 @@
+# Configuration for actions/labeler - file-based labels
+# See: https://github.com/actions/labeler
+---
+pre-commit:
+  - changed-files:
+      - any-glob-to-any-file: '.pre-commit-config.yaml'
+
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.py'
+          - 'custom_components/**/*.py'
+          - 'tests/**/*.py'
+          - 'tox.ini'
+          - 'requirements*.txt'
+          - 'pyproject.toml'
+          - 'Pipfile'
+          - 'Pipfile.lock'
+
+github-config:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**/*'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'requirements*.txt'
+          - 'pyproject.toml'
+          - 'Pipfile'
+          - 'Pipfile.lock'
+          - '.pre-commit-config.yaml'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.md'
+          - '**/*.md'
+          - 'docs/**/*'

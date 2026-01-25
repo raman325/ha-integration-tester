@@ -1,0 +1,99 @@
+{
+    "name": "main",
+    "commit": {
+        "sha": "dbfc180aed0a16c253c1563023b069d5bf3ebcd3",
+        "node_id": "C_kwDOJ7JjuNoAKGRiZmMxODBhZWQwYTE2YzI1M2MxNTYzMDIzYjA2OWQ1YmYzZWJjZDM",
+        "commit": {
+            "author": {
+                "name": "dependabot[bot]",
+                "email": "49699333+dependabot[bot]@users.noreply.github.com",
+                "date": "2026-01-23T12:35:47Z"
+            },
+            "committer": {
+                "name": "GitHub",
+                "email": "noreply@github.com",
+                "date": "2026-01-23T12:35:47Z"
+            },
+            "message": "Bump ruff from 0.14.13 to 0.14.14 (#836)\n\nBumps [ruff](https://github.com/astral-sh/ruff) from 0.14.13 to 0.14.14.\n- [Release notes](https://github.com/astral-sh/ruff/releases)\n- [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/astral-sh/ruff/compare/0.14.13...0.14.14)\n\n---\nupdated-dependencies:\n- dependency-name: ruff\n  dependency-version: 0.14.14\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+            "tree": {
+                "sha": "76863cd8d9665c8e6cd9b9fa566f532c76a142e5",
+                "url": "https://api.github.com/repos/raman325/lock_code_manager/git/trees/76863cd8d9665c8e6cd9b9fa566f532c76a142e5"
+            },
+            "url": "https://api.github.com/repos/raman325/lock_code_manager/git/commits/dbfc180aed0a16c253c1563023b069d5bf3ebcd3",
+            "comment_count": 0,
+            "verification": {
+                "verified": true,
+                "reason": "valid",
+                "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpc2sjCRC1aQ7uu5UhlAAAyTIQAEeFBhi69EjW0yW0pCkEqp2a\nXCOMFGB0jJGBa+UZN63jvLfs+VCXTl5rPSegSK4VEbhJx/z+tTQ488l7oswaW7OK\nzvYOMySfnhxmDoMWE5QwBTJJO48lzYc9GrO8OYX99N6/rH3VWDleZhU+TUv2Ck8x\nq7r3y8X8he3vnLviEpKvOrIBICIg6cbYUjWTA9JmxVuxPTtV7VgktIuocTAqMTsN\nbtHUmcVWQ7UczFnn7+HrtWZVGzysc2kcLEtxBPl2u1yHT6KIpj1VDbf9+KZgL6zm\n9ZxzHd3r+/u7RZU86Z0ELH1Z9rAib6pkXDfAaudNYph51U7OHqu3qMqV3QgTyxic\nwFTv4Ii7v1qZwyLGUHVOAaT7OMfkSgT/KF0ic8iG1py6EtgWrn5VS/DXA4SeB8xf\neGWgKaqqbmSmB/YLn9S7RIxUeWJkV+Vf9oZEijA51uUyl/sv4lwpsk8htXX0tDvU\nG842T4uTBsmDVyjKjMv8tzR61/qlbz4q9GJcpBBck0/ru2bCinrxczm2i5sDMigY\n3MKORK88d8FxY76MCtPzV7ntFnYkzKJhlU13xM9cgeX80DcFiFW9VafeaEciM6yg\nkr/45EsYYFpu8mstfim/jSUWQ/VusqF7EzDXdKkGg+oMeViGpeCaa7qOsoWdkOG5\n0rBr4mm+XsJvlriUvk3u\n=rYfI\n-----END PGP SIGNATURE-----\n",
+                "payload": "tree 76863cd8d9665c8e6cd9b9fa566f532c76a142e5\nparent e735526fccf6d86c5579170705ed278bf6b62918\nauthor dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> 1769171747 +0000\ncommitter GitHub <noreply@github.com> 1769171747 +0000\n\nBump ruff from 0.14.13 to 0.14.14 (#836)\n\nBumps [ruff](https://github.com/astral-sh/ruff) from 0.14.13 to 0.14.14.\n- [Release notes](https://github.com/astral-sh/ruff/releases)\n- [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/astral-sh/ruff/compare/0.14.13...0.14.14)\n\n---\nupdated-dependencies:\n- dependency-name: ruff\n  dependency-version: 0.14.14\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+                "verified_at": "2026-01-23T12:35:48Z"
+            }
+        },
+        "url": "https://api.github.com/repos/raman325/lock_code_manager/commits/dbfc180aed0a16c253c1563023b069d5bf3ebcd3",
+        "html_url": "https://github.com/raman325/lock_code_manager/commit/dbfc180aed0a16c253c1563023b069d5bf3ebcd3",
+        "comments_url": "https://api.github.com/repos/raman325/lock_code_manager/commits/dbfc180aed0a16c253c1563023b069d5bf3ebcd3/comments",
+        "author": {
+            "login": "dependabot[bot]",
+            "id": 49699333,
+            "node_id": "MDM6Qm90NDk2OTkzMzM=",
+            "avatar_url": "https://avatars.githubusercontent.com/in/29110?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/dependabot%5Bbot%5D",
+            "html_url": "https://github.com/apps/dependabot",
+            "followers_url": "https://api.github.com/users/dependabot%5Bbot%5D/followers",
+            "following_url": "https://api.github.com/users/dependabot%5Bbot%5D/following{/other_user}",
+            "gists_url": "https://api.github.com/users/dependabot%5Bbot%5D/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/dependabot%5Bbot%5D/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/dependabot%5Bbot%5D/subscriptions",
+            "organizations_url": "https://api.github.com/users/dependabot%5Bbot%5D/orgs",
+            "repos_url": "https://api.github.com/users/dependabot%5Bbot%5D/repos",
+            "events_url": "https://api.github.com/users/dependabot%5Bbot%5D/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/dependabot%5Bbot%5D/received_events",
+            "type": "Bot",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "committer": {
+            "login": "web-flow",
+            "id": 19864447,
+            "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+            "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/web-flow",
+            "html_url": "https://github.com/web-flow",
+            "followers_url": "https://api.github.com/users/web-flow/followers",
+            "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+            "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+            "organizations_url": "https://api.github.com/users/web-flow/orgs",
+            "repos_url": "https://api.github.com/users/web-flow/repos",
+            "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/web-flow/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "parents": [
+            {
+                "sha": "e735526fccf6d86c5579170705ed278bf6b62918",
+                "url": "https://api.github.com/repos/raman325/lock_code_manager/commits/e735526fccf6d86c5579170705ed278bf6b62918",
+                "html_url": "https://github.com/raman325/lock_code_manager/commit/e735526fccf6d86c5579170705ed278bf6b62918"
+            }
+        ]
+    },
+    "_links": {
+        "self": "https://api.github.com/repos/raman325/lock_code_manager/branches/main",
+        "html": "https://github.com/raman325/lock_code_manager/tree/main"
+    },
+    "protected": true,
+    "protection": {
+        "enabled": false,
+        "required_status_checks": {
+            "enforcement_level": "off",
+            "contexts": [],
+            "checks": []
+        }
+    },
+    "protection_url": "https://api.github.com/repos/raman325/lock_code_manager/branches/main/protection"
+}

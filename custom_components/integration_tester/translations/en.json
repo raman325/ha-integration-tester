@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Integration Tester",
+        "description": "Enter a GitHub URL to download a custom integration.\n\nSupported formats:\n- `github.com/owner/repo` (default branch)\n- `github.com/owner/repo/tree/branch-name`\n- `github.com/owner/repo/pull/123`\n- `github.com/owner/repo/commit/abc123`",
+        "data": {
+          "url": "GitHub URL"
+        }
+      },
+      "select_integration": {
+        "title": "Select Integration",
+        "description": "This PR modifies multiple integrations: {integrations}\n\nSelect which integration to install:",
+        "data": {
+          "domain": "Integration"
+        }
+      },
+      "confirm_overwrite": {
+        "title": "Confirm Overwrite",
+        "description": "The folder `custom_components/{domain}` already exists but wasn't installed by Integration Tester.\n\nProceeding will **delete the existing folder** and replace it.\n\nIf you previously installed this integration via HACS, note that HACS could overwrite the PR/branch/commit version of the integration with a released version, or vice versa.\n\nIt is recommended that the integration is removed from HACS while you manage it via Integration Tester, and once you are done, delete it from Integration Tester and re-add it to HACS.\n\nNote that you may need to reconfigure the integration depending on what's changed between versions.",
+        "data": {
+          "confirm": "I understand, proceed anyway"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
+      "github_error": "Error communicating with GitHub API. Please check the URL and try again.",
+      "hacs_json_not_found": "This repository does not have a hacs.json file. Integration Tester only supports HACS-compatible repositories.",
+      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/<domain>/manifest.json",
+      "core_requires_pr": "For Home Assistant core repository, please use a pull request URL so we can determine which integration to extract.",
+      "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/."
+    },
+    "abort": {
+      "already_configured": "This integration domain is already being tracked by Integration Tester.",
+      "user_cancelled": "Setup cancelled."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Integration Tester Options",
+        "description": "Configure options for tracking `{domain}`.\n\n**Note:** To change the tracked branch, PR, or commit, remove this config entry and add a new one.",
+        "data": {
+          "github_token": "GitHub Personal Access Token (optional)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "commit": {
+        "name": "Commit"
+      },
+      "last_push": {
+        "name": "Last Push"
+      }
+    },
+    "update": {
+      "update": {
+        "name": "Update"
+      }
+    }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Restart Required",
+      "description": "Integration `{domain}` has been installed/updated. Please restart Home Assistant to apply the changes."
+    },
+    "pr_merged": {
+      "title": "PR Merged",
+      "description": "The pull request #{pr_number} for `{domain}` has been **merged**.\n\nThe code is now in the target branch. You should either:\n- Switch to tracking the target branch\n- Remove this config entry\n\nClick 'Fix' to remove this config entry and clean up the installed files."
+    },
+    "pr_closed": {
+      "title": "PR Closed",
+      "description": "The pull request #{pr_number} for `{domain}` has been **closed without merging**.\n\nYou should remove this config entry.\n\nClick 'Fix' to remove this config entry and clean up the installed files."
+    },
+    "integration_removed": {
+      "title": "Integration Removed from PR",
+      "description": "The integration `{domain}` is no longer modified by this pull request.\n\nThis can happen if the PR was rebased or the changes were reverted.\n\nClick 'Fix' to remove this config entry and clean up the installed files."
+    },
+    "download_failed": {
+      "title": "Download Failed",
+      "description": "Failed to check for updates for `{domain}`.\n\nError: {error}\n\nThis issue will automatically resolve when the download succeeds."
+    }
+  }
+}

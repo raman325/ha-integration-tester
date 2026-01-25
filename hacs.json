@@ -1,0 +1,7 @@
+{
+  "name": "Integration Tester",
+  "zip_release": true,
+  "filename": "integration_tester.zip",
+  "homeassistant": "2025.1.0",
+  "render_readme": true
+}

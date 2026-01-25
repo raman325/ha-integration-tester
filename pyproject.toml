@@ -1,0 +1,122 @@
+[project]
+name = "ha-integration-tester"
+version = "0.0.0"
+requires-python = ">=3.13"
+
+[tool.ruff]
+lint.select = ["D", "E", "F", "G", "I", "PLC", "PLE", "PLR", "PLW", "UP", "W"]
+lint.ignore = [
+    "D202",
+    "D212",
+    "D203",
+    "D213",
+    "E501",
+    "PLR0911", # Too many return statements ({returns} > {max_returns})
+    "PLR0912", # Too many branches ({branches} > {max_branches})
+    "PLR0913", # Too many arguments to function call ({c_args} > {max_args})
+    "PLR0915", # Too many statements ({statements} > {max_statements})
+    "PLR2004", # Magic value used in comparison, consider replacing {value} with a constant variable
+    "PLW2901", # Outer {outer_kind} variable {name} overwritten by inner {inner_kind} target
+    "UP006",   # keep type annotation style as is
+    "UP007",   # keep type annotation style as is
+    "PLE1205",
+]
+exclude = [
+    ".venv",
+    ".git",
+    ".tox",
+    "docs",
+    "venv",
+    "bin",
+    "lib",
+    "deps",
+    "build",
+]
+line-length = 88
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "homeassistant",
+    "first-party",
+    "local-folder",
+]
+known-first-party = ["custom_components.integration_tester", "tests"]
+combine-as-imports = true
+
+[tool.ruff.lint.isort.sections]
+"homeassistant" = ["homeassistant"]
+
+
+[tool.pylint.MASTER]
+ignore = ["tests"]
+load-plugins = ["pylint_strict_informational"]
+persistent = false
+extension-pkg-whitelist = ["ciso8601", "cv2"]
+
+[tool.pylint.BASIC]
+good-names = ["_", "ev", "ex", "fp", "i", "id", "j", "k", "Run", "T"]
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "format",
+    "abstract-method",
+    "cyclic-import",
+    "duplicate-code",
+    "inconsistent-return-statements",
+    "locally-disabled",
+    "not-context-manager",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+    "too-many-boolean-expressions",
+    "unused-argument",
+    "wrong-import-order",
+]
+enable = [
+    "use-symbolic-message-instead",
+]
+
+[tool.pylint.REPORTS]
+score = false
+
+[tool.pylint.TYPECHECK]
+ignored-classes = [
+    "_CountingAttr", # for attrs
+]
+
+[tool.pylint.FORMAT]
+expected-line-ending-format = "LF"
+
+[tool.pylint.EXCEPTIONS]
+overgeneral-exceptions = ["BaseException", "Exception", "HomeAssistantError"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+norecursedirs = [".git", "testing_config"]
+
+[tool.mypy]
+ignore_missing_imports = true
+implicit_reexport = true
+show_error_codes = true
+local_partial_types = true
+strict_equality = true
+no_implicit_optional = true
+warn_incomplete_stub = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+enable_error_code = ["ignore-without-code", "redundant-self", "truthy-iterable"]
+disable_error_code = ["annotation-unchecked", "call-arg"]

@@ -1,0 +1,16 @@
+**/__pycache__/
+.venv
+venv
+*.pyc
+.claude
+.codex
+.coverage
+coverage/
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.uv-cache
+uv.lock
+coverage
+htmlcov
+.ha

@@ -1,0 +1,18 @@
+{
+    "name": "manifest.json",
+    "path": "custom_components/lock_code_manager/manifest.json",
+    "sha": "1a196858d7ecc4367a09c3ef8b15e39fc23a69f0",
+    "size": 546,
+    "url": "https://api.github.com/repos/raman325/lock_code_manager/contents/custom_components/lock_code_manager/manifest.json?ref=main",
+    "html_url": "https://github.com/raman325/lock_code_manager/blob/main/custom_components/lock_code_manager/manifest.json",
+    "git_url": "https://api.github.com/repos/raman325/lock_code_manager/git/blobs/1a196858d7ecc4367a09c3ef8b15e39fc23a69f0",
+    "download_url": "https://raw.githubusercontent.com/raman325/lock_code_manager/main/custom_components/lock_code_manager/manifest.json",
+    "type": "file",
+    "content": "ewogICJkb21haW4iOiAibG9ja19jb2RlX21hbmFnZXIiLAogICJuYW1lIjog\nIkxvY2sgQ29kZSBNYW5hZ2VyIiwKICAiYWZ0ZXJfZGVwZW5kZW5jaWVzIjog\nWwogICAgImNhbGVuZGFyIiwKICAgICJmcm9udGVuZCIsCiAgICAiaW5wdXRf\nYm9vbGVhbiIsCiAgICAibG92ZWxhY2UiLAogICAgInNjaGVkdWxlIiwKICAg\nICJ0ZW1wbGF0ZSIsCiAgICAidmlydHVhbCIsCiAgICAiendhdmVfanMiCiAg\nXSwKICAiY29kZW93bmVycyI6IFsKICAgICJAcmFtYW4zMjUiCiAgXSwKICAi\nY29uZmlnX2Zsb3ciOiB0cnVlLAogICJkZXBlbmRlbmNpZXMiOiBbCiAgICAi\naHR0cCIKICBdLAogICJkb2N1bWVudGF0aW9uIjogImh0dHBzOi8vZ2l0aHVi\nLmNvbS9yYW1hbjMyNS9sb2NrX2NvZGVfbWFuYWdlciIsCiAgImlvdF9jbGFz\ncyI6ICJsb2NhbF9wb2xsaW5nIiwKICAiaXNzdWVfdHJhY2tlciI6ICJodHRw\nczovL2dpdGh1Yi5jb20vcmFtYW4zMjUvbG9ja19jb2RlX21hbmFnZXIvaXNz\ndWVzIiwKICAicmVxdWlyZW1lbnRzIjogW10sCiAgInZlcnNpb24iOiAiMC4w\nLjAiCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/raman325/lock_code_manager/contents/custom_components/lock_code_manager/manifest.json?ref=main",
+        "git": "https://api.github.com/repos/raman325/lock_code_manager/git/blobs/1a196858d7ecc4367a09c3ef8b15e39fc23a69f0",
+        "html": "https://github.com/raman325/lock_code_manager/blob/main/custom_components/lock_code_manager/manifest.json"
+    }
+}

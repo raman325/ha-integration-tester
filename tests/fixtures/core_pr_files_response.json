@@ -1,0 +1,26 @@
+[
+    {
+        "sha": "390efb8fc90f55dd40bd06850c403369c88792d0",
+        "filename": "homeassistant/components/niko_home_control/quality_scale.yaml",
+        "status": "added",
+        "additions": 84,
+        "deletions": 0,
+        "changes": 84,
+        "blob_url": "https://github.com/home-assistant/core/blob/63bc46580b3dcd930c1bf6839ba6ca2cc82d900f/homeassistant%2Fcomponents%2Fniko_home_control%2Fquality_scale.yaml",
+        "raw_url": "https://github.com/home-assistant/core/raw/63bc46580b3dcd930c1bf6839ba6ca2cc82d900f/homeassistant%2Fcomponents%2Fniko_home_control%2Fquality_scale.yaml",
+        "contents_url": "https://api.github.com/repos/home-assistant/core/contents/homeassistant%2Fcomponents%2Fniko_home_control%2Fquality_scale.yaml?ref=63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
+        "patch": "@@ -0,0 +1,84 @@\n+rules:\n+  # Bronze\n+  action-setup:\n+    status: exempt\n+    comment: |\n+      This integration does not provide additional actions.\n+  appropriate-polling:\n+    status: exempt\n+    comment: |\n+      This integration does not require polling.\n+  brands: done\n+  common-modules: done\n+  config-flow-test-coverage: done\n+  config-flow:\n+    status: todo\n+    comment: |\n+      Be more specific in the config flow with catching exceptions.\n+  dependency-transparency: done\n+  docs-actions:\n+    status: exempt\n+    comment: |\n+      This integration does not provide additional actions.\n+  docs-high-level-description: todo\n+  docs-installation-instructions: done\n+  docs-removal-instructions: todo\n+  entity-event-setup: done\n+  entity-unique-id: done\n+  has-entity-name: done\n+  runtime-data: done\n+  test-before-configure: done\n+  test-before-setup: done\n+  unique-config-entry: done\n+\n+  # Silver\n+  action-exceptions:\n+    status: exempt\n+    comment: |\n+      This integration does not provide additional actions.\n+  config-entry-unloading: done\n+  docs-configuration-parameters:\n+    status: exempt\n+    comment: No options to configure\n+  docs-installation-parameters:\n+    status: exempt\n+    comment: No options to configure\n+  entity-unavailable: todo\n+  integration-owner: done\n+  log-when-unavailable: todo\n+  parallel-updates: todo\n+  reauthentication-flow:\n+    status: exempt\n+    comment: |\n+      This integration does not require authentication.\n+  test-coverage: todo\n+  # Gold\n+  devices: done\n+  diagnostics: todo\n+  discovery-update-info: todo\n+  discovery: todo\n+  docs-data-update: todo\n+  docs-examples: todo\n+  docs-known-limitations: todo\n+  docs-supported-devices: todo\n+  docs-supported-functions: todo\n+  docs-troubleshooting: todo\n+  docs-use-cases: todo\n+  dynamic-devices: todo\n+  entity-category: todo\n+  entity-device-class: done\n+  entity-disabled-by-default: todo\n+  entity-translations: todo\n+  exception-translations: todo\n+  icon-translations: todo\n+  reconfiguration-flow: todo\n+  repair-issues: done\n+  stale-devices: todo\n+\n+  # Platinum\n+  async-dependency: done\n+  inject-websession:\n+    status: exempt\n+    comment: |\n+      This integration does not require a websession.\n+  strict-typing: todo"
+    },
+    {
+        "sha": "0b6d04f16050694182849c714c8f157f9e882d75",
+        "filename": "script/hassfest/quality_scale.py",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 1,
+        "changes": 1,
+        "blob_url": "https://github.com/home-assistant/core/blob/63bc46580b3dcd930c1bf6839ba6ca2cc82d900f/script%2Fhassfest%2Fquality_scale.py",
+        "raw_url": "https://github.com/home-assistant/core/raw/63bc46580b3dcd930c1bf6839ba6ca2cc82d900f/script%2Fhassfest%2Fquality_scale.py",
+        "contents_url": "https://api.github.com/repos/home-assistant/core/contents/script%2Fhassfest%2Fquality_scale.py?ref=63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
+        "patch": "@@ -709,7 +709,6 @@ class Rule:\n     \"nibe_heatpump\",\n     \"nice_go\",\n     \"nightscout\",\n-    \"niko_home_control\",\n     \"nilu\",\n     \"nina\",\n     \"nissan_leaf\","
+    }
+]

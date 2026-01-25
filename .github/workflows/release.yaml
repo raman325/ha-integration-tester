@@ -1,0 +1,39 @@
+---
+name: Release
+
+# yamllint disable-line rule:truthy
+on:
+  release:
+    types: [published]
+
+jobs:
+  release_zip_file:
+    name: Prepare release asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"
+      - name: Update versions
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          WORKSPACE: ${{ github.workspace }}
+        # yamllint disable rule:line-length
+        run: |
+          sed -i "/version/c\  \"version\": \"${VERSION}\"" "${WORKSPACE}/custom_components/integration_tester/manifest.json"
+        # yamllint enable rule:line-length
+      # Pack the integration_tester dir as a zip and upload to the release
+      - name: ZIP Integration Tester Dir
+        run: |
+          cd ${{ github.workspace }}/custom_components/integration_tester
+          zip integration_tester.zip -r ./
+      - name: Upload zip to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/custom_components/integration_tester/integration_tester.zip
+          asset_name: integration_tester.zip
+          tag: ${{ github.ref }}
+          overwrite: true
