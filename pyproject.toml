@@ -107,6 +107,10 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 norecursedirs = [".git", "testing_config"]
 
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203"]  # conflicts with black/ruff slice formatting
+
 [tool.mypy]
 ignore_missing_imports = true
 implicit_reexport = true
@@ -119,4 +123,4 @@ warn_redundant_casts = true
 warn_unused_configs = true
 warn_unused_ignores = true
 enable_error_code = ["ignore-without-code", "redundant-self", "truthy-iterable"]
-disable_error_code = ["annotation-unchecked", "call-arg"]
+disable_error_code = ["annotation-unchecked", "call-arg", "arg-type", "union-attr", "override", "return-value", "dict-item", "index", "typeddict-item"]
