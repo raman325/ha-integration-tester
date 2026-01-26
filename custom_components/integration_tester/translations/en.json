@@ -5,7 +5,11 @@
         "title": "Integration Tester",
         "description": "Enter a GitHub URL to download a custom integration.\n\nSupported formats:\n- `github.com/owner/repo` (default branch)\n- `github.com/owner/repo/tree/branch-name`\n- `github.com/owner/repo/pull/123`\n- `github.com/owner/repo/commit/abc123`",
         "data": {
-          "url": "GitHub URL"
+          "url": "GitHub URL",
+          "github_token": "GitHub Personal Access Token"
+        },
+        "data_description": {
+          "github_token": "Required for API rate limits. Create a token at github.com/settings/tokens with no special scopes needed for public repos."
         }
       },
       "select_integration": {
@@ -26,13 +30,13 @@
     "error": {
       "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
       "github_error": "Error communicating with GitHub API. Please check the URL and try again.",
-      "hacs_json_not_found": "This repository does not have a hacs.json file. Integration Tester only supports HACS-compatible repositories.",
-      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/<domain>/manifest.json",
+      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/&lt;domain&gt;/manifest.json",
       "core_requires_pr": "For Home Assistant core repository, please use a pull request URL so we can determine which integration to extract.",
       "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/."
     },
     "abort": {
-      "already_configured": "This integration domain is already being tracked by Integration Tester.",
+      "already_configured_same_repo": "This integration is already tracked from this repository by Integration Tester. Delete the existing Integration Tester entry to switch references.",
+      "already_configured_different_repo": "This integration domain is already tracked from a different repository by Integration Tester. Delete the existing Integration Tester entry first.",
       "user_cancelled": "Setup cancelled."
     }
   },
@@ -40,9 +44,12 @@
     "step": {
       "init": {
         "title": "Integration Tester Options",
-        "description": "Configure options for tracking `{domain}`.\n\n**Note:** To change the tracked branch, PR, or commit, remove this config entry and add a new one.",
+        "description": "Configure options for tracking `{domain}`.\n\n**Note:** To change the tracked branch, PR, or commit, remove this config entry and add a new one.\n\nThe GitHub token is a global setting shared across all Integration Tester entries.",
         "data": {
-          "github_token": "GitHub Personal Access Token (optional)"
+          "github_token": "GitHub Personal Access Token"
+        },
+        "data_description": {
+          "github_token": "Increases API rate limit from 60 to 5,000 requests/hour."
         }
       }
     }
@@ -82,6 +89,10 @@
     "download_failed": {
       "title": "Download Failed",
       "description": "Failed to check for updates for `{domain}`.\n\nError: {error}\n\nThis issue will automatically resolve when the download succeeds."
+    },
+    "token_invalid": {
+      "title": "GitHub Token Invalid",
+      "description": "The GitHub personal access token is invalid, expired, or has been revoked.\n\nPlease update the token in any Integration Tester entry's options.\n\nThis issue will automatically resolve when a valid token is configured."
     }
   }
 }
