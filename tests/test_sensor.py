@@ -121,6 +121,13 @@ class TestCommitSensor:
         mock_coordinator.last_update_success = False
         assert sensor.available is False
 
+    def test_extra_state_attributes_no_data(self, mock_coordinator, mock_entry):
+        """Test extra state attributes returns empty dict when no data."""
+        mock_coordinator.data = None
+        sensor = CommitSensor(mock_coordinator, mock_entry)
+        attrs = sensor.extra_state_attributes
+        assert attrs == {}
+
 
 class TestLastPushSensor:
     """Tests for LastPushSensor."""

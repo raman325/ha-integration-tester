@@ -11,13 +11,13 @@ sort-direction: ascending
 version-resolver:
   major:
     labels:
-      - "major"
+      - "it-major"
   minor:
     labels:
-      - "minor"
+      - "it-minor"
   patch:
     labels:
-      - "patch"
+      - "it-patch"
   default: patch
 categories:
   - title: "⚠️ Breaking Changes"
