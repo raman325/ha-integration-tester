@@ -12,11 +12,11 @@ from homeassistant.core import HomeAssistant
 from custom_components.integration_tester.const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
-    CONF_IS_CORE_OR_FORK,
+    CONF_IS_PART_OF_HA_CORE,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
-    DATA_CURRENT_COMMIT,
+    DATA_COMMIT_HASH,
     DATA_PR_STATE,
     DOMAIN,
     PRState,
@@ -90,7 +90,7 @@ class TestCoordinator:
                 await coordinator.async_refresh()
 
             assert coordinator.data is not None
-            assert coordinator.data[DATA_CURRENT_COMMIT] == "new_commit_sha"
+            assert coordinator.data[DATA_COMMIT_HASH] == "new_commit_sha"
             mock_pr_closed.assert_not_called()
 
     @pytest.mark.asyncio
@@ -248,7 +248,7 @@ class TestCoordinator:
 
             assert coordinator.data is not None
             assert (
-                coordinator.data[DATA_CURRENT_COMMIT]
+                coordinator.data[DATA_COMMIT_HASH]
                 == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
             )
 
@@ -292,7 +292,7 @@ class TestCoordinator:
 
             assert coordinator.data is not None
             assert (
-                coordinator.data[DATA_CURRENT_COMMIT]
+                coordinator.data[DATA_COMMIT_HASH]
                 == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
             )
             # Commit references don't have updates
@@ -316,7 +316,7 @@ class TestCoordinator:
                 CONF_REFERENCE_VALUE: "134000",
                 CONF_INTEGRATION_DOMAIN: "hue",
                 CONF_INSTALLED_COMMIT: "abc123",
-                CONF_IS_CORE_OR_FORK: True,
+                CONF_IS_PART_OF_HA_CORE: True,
             },
             unique_id="hue_core",
         )

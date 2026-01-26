@@ -15,17 +15,20 @@ from custom_components.integration_tester.const import (
     CONF_REFERENCE_VALUE,
     CONF_URL,
     DATA_BRANCH_NAME,
+    DATA_BRANCH_URL,
     DATA_COMMIT_AUTHOR,
     DATA_COMMIT_DATE,
+    DATA_COMMIT_HASH,
     DATA_COMMIT_MESSAGE,
     DATA_COMMIT_URL,
-    DATA_CURRENT_COMMIT,
-    DATA_IS_CORE_OR_FORK,
+    DATA_INTEGRATION_DOMAIN,
+    DATA_IS_PART_OF_HA_CORE,
     DATA_LAST_PUSH,
     DATA_PR_NUMBER,
     DATA_PR_STATE,
     DATA_PR_TITLE,
     DATA_PR_URL,
+    DATA_REFERENCE_TYPE,
     DATA_REPO_URL,
     ReferenceType,
 )
@@ -40,14 +43,14 @@ def mock_coordinator():
     """Create a mock coordinator."""
     coordinator = MagicMock()
     coordinator.data = {
-        DATA_CURRENT_COMMIT: "abc123def456789",
+        DATA_COMMIT_HASH: "abc123def456789",
         DATA_COMMIT_MESSAGE: "Test commit message",
         DATA_COMMIT_AUTHOR: "Test Author",
         DATA_COMMIT_DATE: "2024-01-15T10:30:00Z",
         DATA_COMMIT_URL: "https://github.com/owner/repo/commit/abc123def456789",
         DATA_LAST_PUSH: "2024-01-15T10:30:00Z",
         DATA_REPO_URL: "https://github.com/owner/repo",
-        DATA_IS_CORE_OR_FORK: False,
+        DATA_IS_PART_OF_HA_CORE: False,
         DATA_PR_NUMBER: 123,
         DATA_PR_URL: "https://github.com/owner/repo/pull/123",
         DATA_PR_TITLE: "Test PR Title",
@@ -91,27 +94,29 @@ class TestCommitSensor:
         sensor = CommitSensor(mock_coordinator, mock_entry)
         attrs = sensor.extra_state_attributes
 
-        assert attrs["full_commit_hash"] == "abc123def456789"
-        assert attrs["commit_message"] == "Test commit message"
-        assert attrs["commit_author"] == "Test Author"
-        assert attrs["reference_type"] == "pr"
-        assert attrs["integration_domain"] == "test_domain"
-        assert attrs["pr_number"] == 123
-        assert attrs["pr_url"] == "https://github.com/owner/repo/pull/123"
-        assert attrs["pr_title"] == "Test PR Title"
+        assert attrs[DATA_COMMIT_HASH] == "abc123def456789"
+        assert attrs[DATA_COMMIT_MESSAGE] == "Test commit message"
+        assert attrs[DATA_COMMIT_AUTHOR] == "Test Author"
+        assert attrs[DATA_REFERENCE_TYPE] == "pr"
+        assert attrs[DATA_INTEGRATION_DOMAIN] == "test_domain"
+        assert attrs[DATA_PR_NUMBER] == 123
+        assert attrs[DATA_PR_URL] == "https://github.com/owner/repo/pull/123"
+        assert attrs[DATA_PR_TITLE] == "Test PR Title"
 
     def test_extra_state_attributes_branch(self, mock_coordinator, mock_entry):
         """Test extra state attributes for branch reference."""
         mock_entry.data[CONF_REFERENCE_TYPE] = ReferenceType.BRANCH.value
         mock_entry.data[CONF_REFERENCE_VALUE] = "main"
         mock_coordinator.data[DATA_BRANCH_NAME] = "main"
+        mock_coordinator.data[DATA_BRANCH_URL] = "https://github.com/owner/repo/tree/main"
 
         sensor = CommitSensor(mock_coordinator, mock_entry)
         attrs = sensor.extra_state_attributes
 
-        assert attrs["reference_type"] == "branch"
-        assert attrs["branch_name"] == "main"
-        assert "pr_number" not in attrs
+        assert attrs[DATA_REFERENCE_TYPE] == "branch"
+        assert attrs[DATA_BRANCH_NAME] == "main"
+        assert attrs[DATA_BRANCH_URL] == "https://github.com/owner/repo/tree/main"
+        assert DATA_PR_NUMBER not in attrs
 
     def test_available(self, mock_coordinator, mock_entry):
         """Test available property."""

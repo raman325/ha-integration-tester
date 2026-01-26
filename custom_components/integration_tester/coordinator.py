@@ -19,18 +19,19 @@ from .const import (
     CONF_GITHUB_TOKEN,
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
-    CONF_IS_CORE_OR_FORK,
+    CONF_IS_PART_OF_HA_CORE,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
     DATA_BRANCH_NAME,
+    DATA_BRANCH_URL,
     DATA_COMMIT_AUTHOR,
     DATA_COMMIT_DATE,
+    DATA_COMMIT_HASH,
     DATA_COMMIT_MESSAGE,
     DATA_COMMIT_URL,
-    DATA_CURRENT_COMMIT,
     DATA_INTEGRATION_NAME,
-    DATA_IS_CORE_OR_FORK,
+    DATA_IS_PART_OF_HA_CORE,
     DATA_LAST_PUSH,
     DATA_PR_AUTHOR,
     DATA_PR_NUMBER,
@@ -118,9 +119,9 @@ class IntegrationTesterCoordinator(DataUpdateCoordinator[CoordinatorData]):
         return self._entry.data[CONF_INTEGRATION_DOMAIN]
 
     @property
-    def is_core_or_fork(self) -> bool:
+    def is_part_of_ha_core(self) -> bool:
         """Get whether this is a core integration or fork of core."""
-        return self._entry.data.get(CONF_IS_CORE_OR_FORK, False)
+        return self._entry.data.get(CONF_IS_PART_OF_HA_CORE, False)
 
     def _get_owner_repo(self) -> tuple[str, str]:
         """Get owner and repo from URL."""
@@ -140,44 +141,51 @@ class IntegrationTesterCoordinator(DataUpdateCoordinator[CoordinatorData]):
         ref_value = self._entry.data[CONF_REFERENCE_VALUE]
 
         try:
-            data: CoordinatorData = {}
-
             # Populate dynamic fields (derived from URL, may reflect renames)
-            data[DATA_REPO_OWNER] = owner
-            data[DATA_REPO_NAME] = repo
-            data[DATA_REPO_URL] = f"https://github.com/{owner}/{repo}"
-            data[DATA_IS_CORE_OR_FORK] = self.is_core_or_fork
-            data[DATA_INTEGRATION_NAME] = self.domain  # Use domain as name for now
+            data: CoordinatorData = {
+                DATA_REPO_OWNER: owner,
+                DATA_REPO_NAME: repo,
+                DATA_REPO_URL: f"https://github.com/{owner}/{repo}",
+                DATA_IS_PART_OF_HA_CORE: self.is_part_of_ha_core,
+                DATA_INTEGRATION_NAME: self.domain,  # Use domain as name for now
+            }
 
             if ref_type == ReferenceType.PR:
                 pr_info = await self.api.get_pr_info(owner, repo, int(ref_value))
-
-                data[DATA_CURRENT_COMMIT] = pr_info.head_sha
-                data[DATA_PR_NUMBER] = pr_info.number
-                data[DATA_PR_URL] = pr_info.html_url
-                data[DATA_PR_TITLE] = pr_info.title
-                data[DATA_PR_AUTHOR] = pr_info.author
-                data[DATA_PR_STATE] = pr_info.state.value
-                data[DATA_SOURCE_REPO_URL] = pr_info.source_repo_url
-                data[DATA_SOURCE_BRANCH] = pr_info.source_branch
-                data[DATA_TARGET_BRANCH] = pr_info.target_branch
+                data.update(
+                    {
+                        DATA_COMMIT_HASH: pr_info.head_sha,
+                        DATA_PR_NUMBER: pr_info.number,
+                        DATA_PR_URL: pr_info.html_url,
+                        DATA_PR_TITLE: pr_info.title,
+                        DATA_PR_AUTHOR: pr_info.author,
+                        DATA_PR_STATE: pr_info.state.value,
+                        DATA_SOURCE_REPO_URL: pr_info.source_repo_url,
+                        DATA_SOURCE_BRANCH: pr_info.source_branch,
+                        DATA_TARGET_BRANCH: pr_info.target_branch,
+                    }
+                )
 
                 # Get commit info for the head
                 commit_info = await self.api.get_commit_info(
                     owner, repo, pr_info.head_sha
                 )
-                data[DATA_COMMIT_MESSAGE] = commit_info.message
-                data[DATA_COMMIT_AUTHOR] = commit_info.author
-                data[DATA_COMMIT_DATE] = commit_info.date
-                data[DATA_COMMIT_URL] = commit_info.html_url
-                data[DATA_LAST_PUSH] = commit_info.date
+                data.update(
+                    {
+                        DATA_COMMIT_MESSAGE: commit_info.message,
+                        DATA_COMMIT_AUTHOR: commit_info.author,
+                        DATA_COMMIT_DATE: commit_info.date,
+                        DATA_COMMIT_URL: commit_info.html_url,
+                        DATA_LAST_PUSH: commit_info.date,
+                    }
+                )
 
                 # Check PR state
                 if pr_info.state in (PRState.CLOSED, PRState.MERGED):
                     self._handle_pr_closed(pr_info.state == PRState.MERGED)
 
                 # For core PRs, check if integration still in diff
-                if self.is_core_or_fork:
+                if self.is_part_of_ha_core:
                     integrations = await self.api.get_core_pr_integrations(
                         owner, repo, int(ref_value)
                     )
@@ -186,29 +194,35 @@ class IntegrationTesterCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
             elif ref_type == ReferenceType.BRANCH:
                 branch_info = await self.api.get_branch_info(owner, repo, ref_value)
-
-                data[DATA_CURRENT_COMMIT] = branch_info.head_sha
-                data[DATA_BRANCH_NAME] = branch_info.name
-                data[DATA_COMMIT_MESSAGE] = branch_info.commit_message
-                data[DATA_COMMIT_AUTHOR] = branch_info.commit_author
-                data[DATA_COMMIT_DATE] = branch_info.commit_date
-                data[DATA_LAST_PUSH] = branch_info.commit_date
-
                 # Get commit URL
                 commit_info = await self.api.get_commit_info(
                     owner, repo, branch_info.head_sha
                 )
-                data[DATA_COMMIT_URL] = commit_info.html_url
+                data.update(
+                    {
+                        DATA_COMMIT_HASH: branch_info.head_sha,
+                        DATA_BRANCH_NAME: branch_info.name,
+                        DATA_BRANCH_URL: f"https://github.com/{owner}/{repo}/tree/{branch_info.name}",
+                        DATA_COMMIT_MESSAGE: branch_info.commit_message,
+                        DATA_COMMIT_AUTHOR: branch_info.commit_author,
+                        DATA_COMMIT_DATE: branch_info.commit_date,
+                        DATA_LAST_PUSH: branch_info.commit_date,
+                        DATA_COMMIT_URL: commit_info.html_url,
+                    }
+                )
 
             else:  # COMMIT
                 commit_info = await self.api.get_commit_info(owner, repo, ref_value)
-
-                data[DATA_CURRENT_COMMIT] = commit_info.sha
-                data[DATA_COMMIT_MESSAGE] = commit_info.message
-                data[DATA_COMMIT_AUTHOR] = commit_info.author
-                data[DATA_COMMIT_DATE] = commit_info.date
-                data[DATA_COMMIT_URL] = commit_info.html_url
-                data[DATA_LAST_PUSH] = commit_info.date
+                data.update(
+                    {
+                        DATA_COMMIT_HASH: commit_info.sha,
+                        DATA_COMMIT_MESSAGE: commit_info.message,
+                        DATA_COMMIT_AUTHOR: commit_info.author,
+                        DATA_COMMIT_DATE: commit_info.date,
+                        DATA_COMMIT_URL: commit_info.html_url,
+                        DATA_LAST_PUSH: commit_info.date,
+                    }
+                )
 
             # Success - reset failure counter and clear any issues
             self._consecutive_failures = 0
@@ -290,7 +304,7 @@ class IntegrationTesterCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """Check if an update is available."""
         if not self.data:
             return False
-        current_commit = self.data.get(DATA_CURRENT_COMMIT, "")
+        current_commit = self.data.get(DATA_COMMIT_HASH, "")
         return current_commit != self.installed_commit
 
     async def async_update_installed_commit(self, new_commit: str) -> None:

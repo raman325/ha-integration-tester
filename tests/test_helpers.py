@@ -53,7 +53,7 @@ class TestParseGitHubURL:
         assert result.repo == "repo"
         assert result.reference_type == ReferenceType.BRANCH
         assert result.reference_value is None
-        assert not result.is_core_or_fork_repo
+        assert not result.is_part_of_ha_core
 
     def test_parse_default_branch_no_protocol(self):
         """Test parsing URL without protocol."""
@@ -97,7 +97,7 @@ class TestParseGitHubURL:
         result = parse_github_url("https://github.com/home-assistant/core/pull/12345")
         assert result.owner == "home-assistant"
         assert result.repo == "core"
-        assert result.is_core_or_fork_repo is True
+        assert result.is_part_of_ha_core is True
         assert result.reference_type == ReferenceType.PR
         assert result.reference_value == "12345"
 
@@ -396,7 +396,7 @@ class TestExtractIntegration:
             config_dir=tmp_path,
             archive_data=mock_archive_data,
             domain="test_integration",
-            is_core_or_fork=False,
+            is_part_of_ha_core=False,
         )
 
         assert result == tmp_path / "custom_components" / "test_integration"
@@ -413,7 +413,7 @@ class TestExtractIntegration:
             config_dir=tmp_path,
             archive_data=mock_core_archive_data,
             domain="test_domain",
-            is_core_or_fork=True,
+            is_part_of_ha_core=True,
         )
 
         assert result == tmp_path / "custom_components" / "test_domain"
@@ -436,7 +436,7 @@ class TestExtractIntegration:
             config_dir=tmp_path,
             archive_data=mock_archive_data,
             domain="test_integration",
-            is_core_or_fork=False,
+            is_part_of_ha_core=False,
         )
 
         # Old file should be gone, new files should exist
@@ -456,7 +456,7 @@ class TestExtractIntegration:
                 config_dir=tmp_path,
                 archive_data=empty_archive,
                 domain="test",
-                is_core_or_fork=False,
+                is_part_of_ha_core=False,
             )
 
 
@@ -482,7 +482,7 @@ class TestValidateCustomIntegration:
         result = await validate_custom_integration(mock_api, "owner", "repo", "main")
 
         assert result.domain == "lock_code_manager"
-        assert result.is_core_or_fork is False
+        assert result.is_part_of_ha_core is False
 
     @pytest.mark.asyncio
     async def test_validate_custom_integration_no_manifest(self):
@@ -531,7 +531,7 @@ class TestGetCoreIntegrationInfo:
 
         assert result.domain == "hue"
         assert result.name == "Philips Hue"
-        assert result.is_core_or_fork is True
+        assert result.is_part_of_ha_core is True
 
     @pytest.mark.asyncio
     async def test_get_core_integration_info_not_found(self):

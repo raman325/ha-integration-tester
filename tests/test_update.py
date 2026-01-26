@@ -15,9 +15,9 @@ from custom_components.integration_tester.const import (
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
+    DATA_COMMIT_HASH,
     DATA_COMMIT_URL,
-    DATA_CURRENT_COMMIT,
-    DATA_IS_CORE_OR_FORK,
+    DATA_IS_PART_OF_HA_CORE,
     DATA_REPO_NAME,
     DATA_REPO_OWNER,
     DOMAIN,
@@ -36,11 +36,11 @@ def mock_coordinator():
     """Create a mock coordinator."""
     coordinator = MagicMock()
     coordinator.data = {
-        DATA_CURRENT_COMMIT: "new_commit_sha_12345",
+        DATA_COMMIT_HASH: "new_commit_sha_12345",
         DATA_COMMIT_URL: "https://github.com/owner/repo/commit/new_commit_sha_12345",
         DATA_REPO_OWNER: "owner",
         DATA_REPO_NAME: "repo",
-        DATA_IS_CORE_OR_FORK: False,
+        DATA_IS_PART_OF_HA_CORE: False,
     }
     coordinator.last_update_success = True
     coordinator.async_update_installed_commit = AsyncMock()
@@ -231,7 +231,7 @@ class TestIntegrationUpdateEntity:
         self, hass: HomeAssistant, mock_coordinator, mock_pr_entry
     ):
         """Test async_install does nothing when no current commit."""
-        mock_coordinator.data = {DATA_CURRENT_COMMIT: ""}
+        mock_coordinator.data = {DATA_COMMIT_HASH: ""}
         entity = IntegrationUpdateEntity(mock_coordinator, mock_pr_entry)
         entity.hass = hass
 

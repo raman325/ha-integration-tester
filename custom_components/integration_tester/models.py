@@ -15,7 +15,7 @@ class ParsedGitHubURL:
     repo: str
     reference_type: ReferenceType
     reference_value: str | None  # None for default branch
-    is_core_or_fork_repo: bool
+    is_part_of_ha_core: bool
 
     @property
     def repo_url(self) -> str:
@@ -67,7 +67,7 @@ class IntegrationInfo:
 
     domain: str
     name: str
-    is_core_or_fork: bool
+    is_part_of_ha_core: bool
 
 
 @dataclass(kw_only=True)

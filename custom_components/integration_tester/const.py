@@ -19,28 +19,25 @@ CONF_REFERENCE_VALUE: Final = "reference_value"
 CONF_INTEGRATION_DOMAIN: Final = "integration_domain"
 CONF_INSTALLED_COMMIT: Final = "installed_commit"
 CONF_GITHUB_TOKEN: Final = "github_token"
-CONF_IS_CORE_OR_FORK: Final = "is_core_or_fork"
-
-# Legacy config entry data keys (for migration)
-CONF_REPO_OWNER: Final = "repo_owner"
-CONF_REPO_NAME: Final = "repo_name"
-CONF_INTEGRATION_NAME: Final = "integration_name"
-CONF_IS_CORE_INTEGRATION: Final = "is_core_integration"
+CONF_IS_PART_OF_HA_CORE: Final = "is_part_of_ha_core"
 
 # Coordinator data keys
 DATA_COORDINATOR: Final = "coordinator"
+DATA_REFERENCE_TYPE: Final = CONF_REFERENCE_TYPE
+DATA_INTEGRATION_DOMAIN: Final = CONF_INTEGRATION_DOMAIN
 DATA_REPO_OWNER: Final = "repo_owner"
 DATA_REPO_NAME: Final = "repo_name"
 DATA_REPO_URL: Final = "repo_url"
-DATA_IS_CORE_OR_FORK: Final = "is_core_or_fork"
+DATA_IS_PART_OF_HA_CORE: Final = CONF_IS_PART_OF_HA_CORE
 DATA_INTEGRATION_NAME: Final = "integration_name"
-DATA_CURRENT_COMMIT: Final = "current_commit"
+DATA_COMMIT_HASH: Final = "commit_hash"
 DATA_COMMIT_MESSAGE: Final = "commit_message"
 DATA_COMMIT_AUTHOR: Final = "commit_author"
 DATA_COMMIT_DATE: Final = "commit_date"
 DATA_COMMIT_URL: Final = "commit_url"
 DATA_LAST_PUSH: Final = "last_push"
 DATA_BRANCH_NAME: Final = "branch_name"
+DATA_BRANCH_URL: Final = "branch_url"
 DATA_PR_NUMBER: Final = "pr_number"
 DATA_PR_URL: Final = "pr_url"
 DATA_PR_TITLE: Final = "pr_title"
@@ -55,23 +52,23 @@ class CoordinatorData(TypedDict, total=False):
     """Type definition for coordinator data.
 
     Different reference types populate different keys:
-    - All types: repo_owner, repo_name, repo_url, is_core_or_fork, integration_name,
-                 current_commit, commit_message, commit_author, commit_date,
+    - All types: repo_owner, repo_name, repo_url, is_part_of_ha_core, integration_name,
+                 commit_hash, commit_message, commit_author, commit_date,
                  commit_url, last_push
     - PR only: pr_number, pr_url, pr_title, pr_author, pr_state,
                source_repo_url, source_branch, target_branch
-    - Branch only: branch_name
+    - Branch only: branch_name, branch_url
     """
 
     # Dynamic fields (refreshed from API, may change if repo renamed/transferred)
     repo_owner: str
     repo_name: str
     repo_url: str
-    is_core_or_fork: bool
+    is_part_of_ha_core: bool
     integration_name: str
 
     # Common fields (present for all reference types)
-    current_commit: str
+    commit_hash: str
     commit_message: str
     commit_author: str
     commit_date: str
@@ -90,6 +87,7 @@ class CoordinatorData(TypedDict, total=False):
 
     # Branch-specific fields
     branch_name: str
+    branch_url: str
 
 
 # Defaults

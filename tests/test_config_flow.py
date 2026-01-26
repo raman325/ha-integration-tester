@@ -31,7 +31,7 @@ def create_resolved_reference(
     repo: str = "lock_code_manager",
     reference_type: ReferenceType = ReferenceType.PR,
     reference_value: str = "1",
-    is_core_or_fork_repo: bool = False,
+    is_part_of_ha_core: bool = False,
     commit_sha: str = "e937d69acdeab0dc5eba5dbbc3418d78f4459533",
     pr_info: PRInfo | None = None,
 ) -> ResolvedReference:
@@ -41,7 +41,7 @@ def create_resolved_reference(
         repo=repo,
         reference_type=reference_type,
         reference_value=reference_value,
-        is_core_or_fork_repo=is_core_or_fork_repo,
+        is_part_of_ha_core=is_part_of_ha_core,
         commit_sha=commit_sha,
         pr_info=pr_info,
     )
@@ -156,7 +156,7 @@ class TestConfigFlow:
                     repo="core",
                     reference_type=ReferenceType.PR,
                     reference_value="134000",
-                    is_core_or_fork_repo=True,
+                    is_part_of_ha_core=True,
                     commit_sha="63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
                 )
             )
@@ -224,7 +224,7 @@ class TestConfigFlow:
             )
 
         assert result["type"] == FlowResultType.FORM
-        assert result["errors"] == {"url": "github_error"}
+        assert result["errors"] == {"base": "github_error"}
 
     @pytest.mark.asyncio
     async def test_form_already_configured_same_repo(
@@ -417,7 +417,7 @@ class TestConfigFlow:
                     repo="core",
                     reference_type=ReferenceType.PR,
                     reference_value="134000",
-                    is_core_or_fork_repo=True,
+                    is_part_of_ha_core=True,
                     commit_sha="63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
                 )
             )
@@ -470,7 +470,7 @@ class TestConfigFlow:
                     repo="core",
                     reference_type=ReferenceType.PR,
                     reference_value="134000",
-                    is_core_or_fork_repo=True,
+                    is_part_of_ha_core=True,
                     commit_sha="63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
                 )
             )

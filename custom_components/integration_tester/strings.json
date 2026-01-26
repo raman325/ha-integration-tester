@@ -30,7 +30,7 @@
     "error": {
       "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
       "invalid_token": "Invalid GitHub token. Please check that the token is correct and has not expired.",
-      "github_error": "Error communicating with GitHub API. Please check the URL and try again.",
+      "github_error": "GitHub API error: {error}",
       "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/&lt;domain&gt;/manifest.json",
       "core_requires_pr": "For Home Assistant core repository, please use a pull request URL so we can determine which integration to extract.",
       "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/."

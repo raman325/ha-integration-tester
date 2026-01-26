@@ -22,9 +22,9 @@ from .const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
     CONF_REFERENCE_TYPE,
+    DATA_COMMIT_HASH,
     DATA_COMMIT_URL,
-    DATA_CURRENT_COMMIT,
-    DATA_IS_CORE_OR_FORK,
+    DATA_IS_PART_OF_HA_CORE,
     DATA_REPO_NAME,
     DATA_REPO_OWNER,
     DOMAIN,
@@ -111,7 +111,7 @@ class IntegrationUpdateEntity(
         """Return the latest version (current head commit)."""
         if not self.coordinator.data:
             return self.installed_version
-        commit = self.coordinator.data.get(DATA_CURRENT_COMMIT, "")
+        commit = self.coordinator.data.get(DATA_COMMIT_HASH, "")
         return commit[:7] if commit else None
 
     @property
@@ -135,7 +135,7 @@ class IntegrationUpdateEntity(
         if not self.coordinator.data:
             return
 
-        new_commit = self.coordinator.data.get(DATA_CURRENT_COMMIT, "")
+        new_commit = self.coordinator.data.get(DATA_COMMIT_HASH, "")
         if not new_commit:
             return
 
@@ -155,7 +155,7 @@ class IntegrationUpdateEntity(
                 config_dir,
                 archive_data,
                 self._domain,
-                self.coordinator.data.get(DATA_IS_CORE_OR_FORK, False),
+                self.coordinator.data.get(DATA_IS_PART_OF_HA_CORE, False),
             )
 
             # Update installed commit in config entry

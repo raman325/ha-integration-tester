@@ -72,7 +72,7 @@ def parse_github_url(url: str) -> ParsedGitHubURL:
                     repo=repo,
                     reference_type=ReferenceType.PR,
                     reference_value=groups["pr_number"],
-                    is_core_or_fork_repo=is_core,
+                    is_part_of_ha_core=is_core,
                 )
             if "commit" in groups:
                 return ParsedGitHubURL(
@@ -80,7 +80,7 @@ def parse_github_url(url: str) -> ParsedGitHubURL:
                     repo=repo,
                     reference_type=ReferenceType.COMMIT,
                     reference_value=groups["commit"],
-                    is_core_or_fork_repo=is_core,
+                    is_part_of_ha_core=is_core,
                 )
             if "branch" in groups:
                 return ParsedGitHubURL(
@@ -88,7 +88,7 @@ def parse_github_url(url: str) -> ParsedGitHubURL:
                     repo=repo,
                     reference_type=ReferenceType.BRANCH,
                     reference_value=groups["branch"],
-                    is_core_or_fork_repo=is_core,
+                    is_part_of_ha_core=is_core,
                 )
             # Default branch
             return ParsedGitHubURL(
@@ -96,7 +96,7 @@ def parse_github_url(url: str) -> ParsedGitHubURL:
                 repo=repo,
                 reference_type=ReferenceType.BRANCH,
                 reference_value=None,  # Will be resolved to default branch
-                is_core_or_fork_repo=is_core,
+                is_part_of_ha_core=is_core,
             )
 
     raise InvalidGitHubURLError(f"Invalid GitHub URL: {url}")
@@ -131,7 +131,7 @@ async def validate_custom_integration(
                     return IntegrationInfo(
                         domain=manifest.get("domain", domain),
                         name=manifest.get("name", domain),
-                        is_core_or_fork=False,
+                        is_part_of_ha_core=False,
                     )
                 except (GitHubAPIError, json.JSONDecodeError):
                     continue
@@ -166,7 +166,7 @@ async def get_core_integration_info(
         return IntegrationInfo(
             domain=manifest.get("domain", domain),
             name=manifest.get("name", domain),
-            is_core_or_fork=True,
+            is_part_of_ha_core=True,
         )
     except (GitHubAPIError, json.JSONDecodeError) as err:
         raise IntegrationNotFoundError(
@@ -178,7 +178,7 @@ def extract_integration(
     config_dir: Path,
     archive_data: bytes,
     domain: str,
-    is_core_or_fork: bool,
+    is_part_of_ha_core: bool,
 ) -> Path:
     """
     Extract integration files from archive to custom_components.
@@ -206,7 +206,7 @@ def extract_integration(
         # GitHub archives have a root directory like "repo-branch/"
         root_dir = members[0].name.split("/")[0]
 
-        if is_core_or_fork:
+        if is_part_of_ha_core:
             # For core integrations, extract from homeassistant/components/domain/
             source_prefix = f"{root_dir}/{HA_CORE_COMPONENTS_PATH}/{domain}/"
         else:
