@@ -51,7 +51,7 @@ class IntegrationTesterGitHubAPI:
                 )
                 # Authenticated users get 5000, unauthenticated get 60
                 return core_limit > 60
-            return True
+            raise GitHubAPIError("Unexpected response from GitHub rate limit API")
         except GitHubAuthenticationException as err:
             raise GitHubAuthError(str(err)) from err
         except GitHubRatelimitException as err:

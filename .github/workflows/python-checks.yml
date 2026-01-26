@@ -74,7 +74,11 @@ jobs:
       - name: Run tests and generate coverage report
         run: |
           uv pip install --system pytest-cov pytest-github-actions-annotate-failures
-          pytest ./tests/ --cov=custom_components/integration_tester/ --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+          pytest ./tests/ \
+            --cov=custom_components/integration_tester/ \
+            --cov-report=xml \
+            --junitxml=junit.xml \
+            -o junit_family=legacy
       - name: Upload coverage to Codecov
         if: matrix.python-version == needs.setup.outputs.target-python
         uses: codecov/codecov-action@v5
