@@ -10,10 +10,11 @@ import pytest
 
 from homeassistant.core import HomeAssistant
 
-from custom_components.integration_tester import async_remove_entry
+from custom_components.integration_tester import async_remove_entry, async_setup_entry
 from custom_components.integration_tester.const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
+    CONF_IS_CORE_OR_FORK,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
@@ -72,6 +73,83 @@ class TestSetup:
         assert result is True
         assert DOMAIN in hass.data
         assert mock_config_entry.entry_id in hass.data[DOMAIN]
+
+    @pytest.mark.asyncio
+    async def test_setup_entry_fresh_install(
+        self,
+        hass: HomeAssistant,
+        pr_response: dict[str, Any],
+        tmp_path: Path,
+    ):
+        """Test setup when no commit is installed yet (fresh install)."""
+        # Create entry without CONF_INSTALLED_COMMIT
+        entry = create_config_entry(
+            hass,
+            domain=DOMAIN,
+            title="Test (PR #1)",
+            data={
+                CONF_URL: "https://github.com/owner/repo/pull/1",
+                CONF_REFERENCE_TYPE: ReferenceType.PR.value,
+                CONF_REFERENCE_VALUE: "1",
+                CONF_INTEGRATION_DOMAIN: "test_domain",
+                CONF_IS_CORE_OR_FORK: False,
+                # No CONF_INSTALLED_COMMIT - triggers fresh install
+            },
+            unique_id="test_domain_fresh",
+        )
+        entry.add_to_hass(hass)
+
+        # Create custom_components directory
+        custom_components = tmp_path / "custom_components"
+        custom_components.mkdir()
+
+        with (
+            patch(
+                "custom_components.integration_tester.api.GitHubAPI"
+            ) as mock_github_cls,
+            patch(
+                "custom_components.integration_tester.extract_integration"
+            ) as mock_extract,
+            patch(
+                "custom_components.integration_tester.create_restart_required_issue"
+            ) as mock_restart_issue,
+            patch.object(hass.config, "config_dir", str(tmp_path)),
+        ):
+            mock_client = MagicMock()
+            mock_github_cls.return_value = mock_client
+
+            # Mock PR info response
+            pr_response["head"]["sha"] = "fresh_commit_sha"
+            pr_response["merged"] = False
+            pr_response["state"] = "open"
+            mock_pr_response = create_mock_response(pr_response)
+
+            async def mock_generic(endpoint, **kwargs):
+                if "/pulls/" in endpoint and "/files" not in endpoint:
+                    return mock_pr_response
+                return create_mock_response({})
+
+            mock_client.generic = AsyncMock(side_effect=mock_generic)
+
+            # Mock download_archive
+            mock_download = AsyncMock(return_value=b"archive_data")
+            with patch(
+                "custom_components.integration_tester.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls:
+                mock_api = MagicMock()
+                mock_api.get_pr_info = AsyncMock(
+                    return_value=MagicMock(head_sha="fresh_commit_sha")
+                )
+                mock_api.download_archive = mock_download
+                mock_api_cls.return_value = mock_api
+
+                result = await hass.config_entries.async_setup(entry.entry_id)
+
+        assert result is True
+        # Verify download was attempted
+        mock_download.assert_called_once()
+        # Verify restart issue was created
+        mock_restart_issue.assert_called_once()
 
 
 class TestRemoval:

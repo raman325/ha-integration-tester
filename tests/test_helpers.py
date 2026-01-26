@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,16 +13,28 @@ from aiogithubapi.exceptions import (
 )
 import pytest
 
+from homeassistant.core import HomeAssistant
+
 from custom_components.integration_tester.api import IntegrationTesterGitHubAPI
-from custom_components.integration_tester.const import PRState, ReferenceType
+from custom_components.integration_tester.const import MARKER_FILE, PRState, ReferenceType
 from custom_components.integration_tester.exceptions import (
     GitHubAPIError,
     GitHubRateLimitError,
+    IntegrationNotFoundError,
     InvalidGitHubURLError,
+    ManifestNotFoundError,
 )
-from custom_components.integration_tester.helpers import parse_github_url
+from custom_components.integration_tester.helpers import (
+    extract_integration,
+    get_core_integration_info,
+    integration_exists,
+    integration_has_marker,
+    parse_github_url,
+    remove_integration,
+    validate_custom_integration,
+)
 
-from .conftest import create_mock_response
+from .conftest import create_mock_response, create_tarball
 
 
 class TestParseGitHubURL:
@@ -365,3 +379,220 @@ class TestIntegrationTesterGitHubAPI:
             result = await api.get_default_branch("owner", "repo")
 
         assert result == "main"
+
+
+class TestExtractIntegration:
+    """Tests for extract_integration helper."""
+
+    def test_extract_custom_integration(self, tmp_path: Path, mock_archive_data: bytes):
+        """Test extracting a custom integration from archive."""
+        result = extract_integration(
+            config_dir=tmp_path,
+            archive_data=mock_archive_data,
+            domain="test_integration",
+            is_core_or_fork=False,
+        )
+
+        assert result == tmp_path / "custom_components" / "test_integration"
+        assert result.exists()
+        assert (result / "__init__.py").exists()
+        assert (result / "manifest.json").exists()
+        assert (result / MARKER_FILE).exists()
+
+    def test_extract_core_integration(self, tmp_path: Path, mock_core_archive_data: bytes):
+        """Test extracting a core integration from archive."""
+        result = extract_integration(
+            config_dir=tmp_path,
+            archive_data=mock_core_archive_data,
+            domain="test_domain",
+            is_core_or_fork=True,
+        )
+
+        assert result == tmp_path / "custom_components" / "test_domain"
+        assert result.exists()
+        assert (result / "__init__.py").exists()
+        assert (result / "manifest.json").exists()
+        assert (result / MARKER_FILE).exists()
+
+    def test_extract_replaces_existing_directory(
+        self, tmp_path: Path, mock_archive_data: bytes
+    ):
+        """Test that extraction replaces existing integration directory."""
+        # Create existing directory with a file
+        existing_dir = tmp_path / "custom_components" / "test_integration"
+        existing_dir.mkdir(parents=True)
+        old_file = existing_dir / "old_file.py"
+        old_file.write_text("old content")
+
+        extract_integration(
+            config_dir=tmp_path,
+            archive_data=mock_archive_data,
+            domain="test_integration",
+            is_core_or_fork=False,
+        )
+
+        # Old file should be gone, new files should exist
+        assert not old_file.exists()
+        assert (existing_dir / "__init__.py").exists()
+
+    def test_extract_empty_archive_raises(self, tmp_path: Path):
+        """Test that empty archive raises ValueError."""
+        # Create an empty tarball
+        import io
+        import tarfile
+
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w:gz"):
+            pass
+        empty_archive = buffer.getvalue()
+
+        with pytest.raises(ValueError, match="Empty archive"):
+            extract_integration(
+                config_dir=tmp_path,
+                archive_data=empty_archive,
+                domain="test",
+                is_core_or_fork=False,
+            )
+
+
+class TestValidateCustomIntegration:
+    """Tests for validate_custom_integration helper."""
+
+    @pytest.mark.asyncio
+    async def test_validate_custom_integration_success(
+        self, manifest_json_contents: dict[str, Any]
+    ):
+        """Test validating a valid custom integration."""
+        mock_api = MagicMock()
+
+        # Mock directory contents
+        mock_api.get_directory_contents = AsyncMock(
+            return_value=[{"name": "lock_code_manager", "type": "dir"}]
+        )
+        # Mock manifest content
+        mock_api.get_file_content = AsyncMock(
+            return_value=json.dumps(manifest_json_contents)
+        )
+
+        result = await validate_custom_integration(mock_api, "owner", "repo", "main")
+
+        assert result.domain == "lock_code_manager"
+        assert result.is_core_or_fork is False
+
+    @pytest.mark.asyncio
+    async def test_validate_custom_integration_no_manifest(self):
+        """Test that missing manifest raises ManifestNotFoundError."""
+        mock_api = MagicMock()
+
+        # Mock directory contents but no valid manifest
+        mock_api.get_directory_contents = AsyncMock(
+            return_value=[{"name": "some_dir", "type": "dir"}]
+        )
+        mock_api.get_file_content = AsyncMock(side_effect=GitHubAPIError("Not found"))
+
+        with pytest.raises(ManifestNotFoundError):
+            await validate_custom_integration(mock_api, "owner", "repo", "main")
+
+    @pytest.mark.asyncio
+    async def test_validate_custom_integration_no_custom_components(self):
+        """Test that missing custom_components raises ManifestNotFoundError."""
+        mock_api = MagicMock()
+
+        # No custom_components directory
+        mock_api.get_directory_contents = AsyncMock(
+            side_effect=GitHubAPIError("Not found")
+        )
+
+        with pytest.raises(ManifestNotFoundError):
+            await validate_custom_integration(mock_api, "owner", "repo", "main")
+
+
+class TestGetCoreIntegrationInfo:
+    """Tests for get_core_integration_info helper."""
+
+    @pytest.mark.asyncio
+    async def test_get_core_integration_info_success(self):
+        """Test getting core integration info successfully."""
+        mock_api = MagicMock()
+        manifest = {
+            "domain": "hue",
+            "name": "Philips Hue",
+        }
+        mock_api.get_file_content = AsyncMock(return_value=json.dumps(manifest))
+
+        result = await get_core_integration_info(
+            mock_api, "home-assistant", "core", "hue", "main"
+        )
+
+        assert result.domain == "hue"
+        assert result.name == "Philips Hue"
+        assert result.is_core_or_fork is True
+
+    @pytest.mark.asyncio
+    async def test_get_core_integration_info_not_found(self):
+        """Test that missing integration raises IntegrationNotFoundError."""
+        mock_api = MagicMock()
+        mock_api.get_file_content = AsyncMock(side_effect=GitHubAPIError("Not found"))
+
+        with pytest.raises(IntegrationNotFoundError):
+            await get_core_integration_info(
+                mock_api, "home-assistant", "core", "nonexistent", "main"
+            )
+
+
+class TestIntegrationHelpers:
+    """Tests for integration_has_marker, integration_exists, remove_integration."""
+
+    def test_integration_has_marker_true(self, hass: HomeAssistant, tmp_path: Path):
+        """Test marker detection when marker exists."""
+        # Create integration with marker
+        integration_dir = tmp_path / "custom_components" / "test_domain"
+        integration_dir.mkdir(parents=True)
+        (integration_dir / MARKER_FILE).touch()
+
+        with patch.object(hass.config, "config_dir", str(tmp_path)):
+            assert integration_has_marker(hass, "test_domain") is True
+
+    def test_integration_has_marker_false(self, hass: HomeAssistant, tmp_path: Path):
+        """Test marker detection when marker doesn't exist."""
+        # Create integration without marker
+        integration_dir = tmp_path / "custom_components" / "test_domain"
+        integration_dir.mkdir(parents=True)
+
+        with patch.object(hass.config, "config_dir", str(tmp_path)):
+            assert integration_has_marker(hass, "test_domain") is False
+
+    def test_integration_exists_true(self, hass: HomeAssistant, tmp_path: Path):
+        """Test integration_exists returns True when exists."""
+        integration_dir = tmp_path / "custom_components" / "test_domain"
+        integration_dir.mkdir(parents=True)
+
+        with patch.object(hass.config, "config_dir", str(tmp_path)):
+            assert integration_exists(hass, "test_domain") is True
+
+    def test_integration_exists_false(self, hass: HomeAssistant, tmp_path: Path):
+        """Test integration_exists returns False when doesn't exist."""
+        with patch.object(hass.config, "config_dir", str(tmp_path)):
+            assert integration_exists(hass, "nonexistent") is False
+
+    @pytest.mark.asyncio
+    async def test_remove_integration(self, hass: HomeAssistant, tmp_path: Path):
+        """Test removing an integration directory."""
+        # Create integration directory
+        integration_dir = tmp_path / "custom_components" / "test_domain"
+        integration_dir.mkdir(parents=True)
+        (integration_dir / "__init__.py").touch()
+
+        with patch.object(hass.config, "config_dir", str(tmp_path)):
+            await remove_integration(hass, "test_domain")
+
+        assert not integration_dir.exists()
+
+    @pytest.mark.asyncio
+    async def test_remove_integration_nonexistent(
+        self, hass: HomeAssistant, tmp_path: Path
+    ):
+        """Test removing non-existent integration is safe."""
+        with patch.object(hass.config, "config_dir", str(tmp_path)):
+            # Should not raise
+            await remove_integration(hass, "nonexistent")
