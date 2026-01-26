@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from custom_components.integration_tester.const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
+    CONF_IS_CORE_OR_FORK,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
@@ -250,3 +251,114 @@ class TestCoordinator:
                 coordinator.data[DATA_CURRENT_COMMIT]
                 == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
             )
+
+    @pytest.mark.asyncio
+    async def test_fetch_commit_data(
+        self,
+        hass: HomeAssistant,
+        commit_response: dict[str, Any],
+    ):
+        """Test fetching commit data."""
+        entry = create_config_entry(
+            hass,
+            domain=DOMAIN,
+            title="Test (commit: abc123)",
+            data={
+                CONF_URL: "https://github.com/owner/repo",
+                CONF_REFERENCE_TYPE: ReferenceType.COMMIT.value,
+                CONF_REFERENCE_VALUE: "dbfc180aed0a16c253c1563023b069d5bf3ebcd3",
+                CONF_INTEGRATION_DOMAIN: "test_domain",
+                CONF_INSTALLED_COMMIT: "dbfc180aed0a16c253c1563023b069d5bf3ebcd3",
+            },
+            unique_id="test_domain_commit",
+        )
+        entry.add_to_hass(hass)
+
+        with patch(
+            "custom_components.integration_tester.api.GitHubAPI"
+        ) as mock_github_cls:
+            mock_client = MagicMock()
+            mock_github_cls.return_value = mock_client
+
+            async def mock_generic(endpoint, **kwargs):
+                if "/commits/" in endpoint:
+                    return create_mock_response(commit_response)
+                return create_mock_response({})
+
+            mock_client.generic = AsyncMock(side_effect=mock_generic)
+
+            coordinator = IntegrationTesterCoordinator(hass, entry)
+            await coordinator.async_refresh()
+
+            assert coordinator.data is not None
+            assert (
+                coordinator.data[DATA_CURRENT_COMMIT]
+                == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
+            )
+            # Commit references don't have updates
+            assert coordinator.update_available is False
+
+    @pytest.mark.asyncio
+    async def test_core_pr_integration_removed(
+        self,
+        hass: HomeAssistant,
+        pr_response: dict[str, Any],
+        commit_response: dict[str, Any],
+    ):
+        """Test core PR triggers issue when integration removed from diff."""
+        entry = create_config_entry(
+            hass,
+            domain=DOMAIN,
+            title="Test Core (PR #134000)",
+            data={
+                CONF_URL: "https://github.com/home-assistant/core",
+                CONF_REFERENCE_TYPE: ReferenceType.PR.value,
+                CONF_REFERENCE_VALUE: "134000",
+                CONF_INTEGRATION_DOMAIN: "hue",
+                CONF_INSTALLED_COMMIT: "abc123",
+                CONF_IS_CORE_OR_FORK: True,
+            },
+            unique_id="hue_core",
+        )
+        entry.add_to_hass(hass)
+
+        with patch(
+            "custom_components.integration_tester.api.GitHubAPI"
+        ) as mock_github_cls:
+            mock_client = MagicMock()
+            mock_github_cls.return_value = mock_client
+
+            pr_response["head"]["sha"] = "new_commit_sha"
+            pr_response["merged"] = False
+            pr_response["state"] = "open"
+
+            # Return files that don't include our integration
+            pr_files = [{"filename": "homeassistant/components/zwave_js/__init__.py"}]
+
+            async def mock_generic(endpoint, **kwargs):
+                if "/pulls/" in endpoint and "/files" in endpoint:
+                    return create_mock_response(pr_files)
+                if "/pulls/" in endpoint:
+                    return create_mock_response(pr_response)
+                if "/commits/" in endpoint:
+                    return create_mock_response(commit_response)
+                return create_mock_response({})
+
+            mock_client.generic = AsyncMock(side_effect=mock_generic)
+
+            coordinator = IntegrationTesterCoordinator(hass, entry)
+
+            with (
+                patch(
+                    "custom_components.integration_tester.coordinator.create_integration_removed_issue"
+                ) as mock_create_issue,
+                patch(
+                    "custom_components.integration_tester.coordinator.is_repair_issue_acknowledged",
+                    return_value=False,
+                ),
+                patch("homeassistant.components.persistent_notification.async_create"),
+            ):
+                await coordinator.async_refresh()
+
+            # Should create integration removed issue since hue not in diff
+            mock_create_issue.assert_called_once()

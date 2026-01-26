@@ -5,18 +5,6 @@ pre-commit:
   - changed-files:
       - any-glob-to-any-file: '.pre-commit-config.yaml'
 
-python:
-  - changed-files:
-      - any-glob-to-any-file:
-          - '*.py'
-          - 'custom_components/**/*.py'
-          - 'tests/**/*.py'
-          - 'tox.ini'
-          - 'requirements*.txt'
-          - 'pyproject.toml'
-          - 'Pipfile'
-          - 'Pipfile.lock'
-
 github-config:
   - changed-files:
       - any-glob-to-any-file: '.github/**/*'
