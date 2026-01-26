@@ -516,37 +516,3 @@ class TestOptionsFlow:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         # Token should be stored in hass.data
         assert hass.data[DOMAIN][CONF_GITHUB_TOKEN] == "new_test_token"
-
-    @pytest.mark.asyncio
-    async def test_options_flow_remove_token(self, hass: HomeAssistant):
-        """Test removing token via options flow."""
-        # Set up existing token
-        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "existing_token"}
-
-        # Create existing entry
-        entry = create_config_entry(
-            hass,
-            domain=DOMAIN,
-            title="Test",
-            data={
-                CONF_INTEGRATION_DOMAIN: "test_domain",
-                CONF_URL: "https://github.com/owner/repo",
-                CONF_REFERENCE_TYPE: ReferenceType.PR.value,
-                CONF_REFERENCE_VALUE: "1",
-            },
-            unique_id="test_domain",
-        )
-        entry.add_to_hass(hass)
-
-        # Initialize options flow
-        result = await hass.config_entries.options.async_init(entry.entry_id)
-
-        # Submit empty token (removes it)
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"],
-            {CONF_GITHUB_TOKEN: ""},
-        )
-
-        assert result["type"] == FlowResultType.CREATE_ENTRY
-        # Token should be removed from hass.data
-        assert CONF_GITHUB_TOKEN not in hass.data.get(DOMAIN, {})

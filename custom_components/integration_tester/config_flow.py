@@ -301,12 +301,9 @@ class IntegrationTesterOptionsFlow(OptionsFlow):
         """Handle options flow."""
         if user_input is not None:
             # Store token in hass.data for use by API client
-            token = user_input.get(CONF_GITHUB_TOKEN)
-            if token:
-                self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
-            elif CONF_GITHUB_TOKEN in self.hass.data.get(DOMAIN, {}):
-                del self.hass.data[DOMAIN][CONF_GITHUB_TOKEN]
-
+            self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = user_input[
+                CONF_GITHUB_TOKEN
+            ]
             return self.async_create_entry(title="", data=user_input)
 
         current_token = self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN, "")
@@ -315,7 +312,10 @@ class IntegrationTesterOptionsFlow(OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(CONF_GITHUB_TOKEN, default=current_token): cv.string,
+                    vol.Required(
+                        CONF_GITHUB_TOKEN,
+                        description={"suggested_value": current_token},
+                    ): cv.string,
                 }
             ),
             description_placeholders={
