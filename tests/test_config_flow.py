@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.integration_tester.const import (
+    CONF_GITHUB_TOKEN,
     CONF_INTEGRATION_DOMAIN,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
@@ -368,3 +369,184 @@ class TestConfigFlow:
         # Should show confirmation form
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "confirm_overwrite"
+
+    @pytest.mark.asyncio
+    async def test_form_core_pr_multiple_integrations(
+        self,
+        hass: HomeAssistant,
+    ):
+        """Test config flow with core PR that modifies multiple integrations."""
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            # Mock resolve_reference to return ResolvedReference for core repo
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference(
+                    owner="home-assistant",
+                    repo="core",
+                    reference_type=ReferenceType.PR,
+                    reference_value="134000",
+                    is_core_or_fork_repo=True,
+                    commit_sha="63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
+                )
+            )
+
+            # Mock get_core_pr_integrations - returns multiple integrations
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["hue", "zwave_js", "mqtt"]
+            )
+
+            # Mock manifest content for core integration
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "hue", "name": "Philips Hue"}'
+            )
+
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": config_entries.SOURCE_USER}
+            )
+
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {
+                    "url": "https://github.com/home-assistant/core/pull/134000",
+                    "github_token": "test_token",
+                },
+            )
+
+        # Should show integration selection form
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "select_integration"
+
+    @pytest.mark.asyncio
+    async def test_form_select_integration_step(
+        self,
+        hass: HomeAssistant,
+    ):
+        """Test selecting integration from multiple options."""
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            # Mock resolve_reference for core repo
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference(
+                    owner="home-assistant",
+                    repo="core",
+                    reference_type=ReferenceType.PR,
+                    reference_value="134000",
+                    is_core_or_fork_repo=True,
+                    commit_sha="63bc46580b3dcd930c1bf6839ba6ca2cc82d900f",
+                )
+            )
+
+            # Mock get_core_pr_integrations - returns multiple integrations
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["hue", "zwave_js"]
+            )
+
+            # Mock manifest content
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "hue", "name": "Philips Hue"}'
+            )
+
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": config_entries.SOURCE_USER}
+            )
+
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {
+                    "url": "https://github.com/home-assistant/core/pull/134000",
+                    "github_token": "test_token",
+                },
+            )
+
+            # Now select an integration
+            with patch(
+                "custom_components.integration_tester.config_flow.integration_exists",
+                return_value=False,
+            ):
+                result = await hass.config_entries.flow.async_configure(
+                    result["flow_id"],
+                    {"domain": "hue"},
+                )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"][CONF_INTEGRATION_DOMAIN] == "hue"
+
+
+class TestOptionsFlow:
+    """Tests for options flow."""
+
+    @pytest.mark.asyncio
+    async def test_options_flow_update_token(self, hass: HomeAssistant):
+        """Test updating token via options flow."""
+        # Create existing entry
+        entry = create_config_entry(
+            hass,
+            domain=DOMAIN,
+            title="Test",
+            data={
+                CONF_INTEGRATION_DOMAIN: "test_domain",
+                CONF_URL: "https://github.com/owner/repo",
+                CONF_REFERENCE_TYPE: ReferenceType.PR.value,
+                CONF_REFERENCE_VALUE: "1",
+            },
+            unique_id="test_domain",
+        )
+        entry.add_to_hass(hass)
+
+        # Initialize options flow
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "init"
+
+        # Submit new token
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {CONF_GITHUB_TOKEN: "new_test_token"},
+        )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        # Token should be stored in hass.data
+        assert hass.data[DOMAIN][CONF_GITHUB_TOKEN] == "new_test_token"
+
+    @pytest.mark.asyncio
+    async def test_options_flow_remove_token(self, hass: HomeAssistant):
+        """Test removing token via options flow."""
+        # Set up existing token
+        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "existing_token"}
+
+        # Create existing entry
+        entry = create_config_entry(
+            hass,
+            domain=DOMAIN,
+            title="Test",
+            data={
+                CONF_INTEGRATION_DOMAIN: "test_domain",
+                CONF_URL: "https://github.com/owner/repo",
+                CONF_REFERENCE_TYPE: ReferenceType.PR.value,
+                CONF_REFERENCE_VALUE: "1",
+            },
+            unique_id="test_domain",
+        )
+        entry.add_to_hass(hass)
+
+        # Initialize options flow
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+
+        # Submit empty token (removes it)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {CONF_GITHUB_TOKEN: ""},
+        )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        # Token should be removed from hass.data
+        assert CONF_GITHUB_TOKEN not in hass.data.get(DOMAIN, {})

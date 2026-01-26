@@ -190,9 +190,7 @@ class TestIntegrationUpdateEntity:
             patch(
                 "custom_components.integration_tester.update.IntegrationTesterGitHubAPI"
             ) as mock_api_cls,
-            patch(
-                "custom_components.integration_tester.update.extract_integration"
-            ) as mock_extract,
+            patch("custom_components.integration_tester.update.extract_integration"),
             patch(
                 "custom_components.integration_tester.update.create_restart_required_issue"
             ) as mock_restart_issue,

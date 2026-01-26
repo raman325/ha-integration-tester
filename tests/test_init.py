@@ -107,9 +107,7 @@ class TestSetup:
             patch(
                 "custom_components.integration_tester.api.GitHubAPI"
             ) as mock_github_cls,
-            patch(
-                "custom_components.integration_tester.extract_integration"
-            ) as mock_extract,
+            patch("custom_components.integration_tester.extract_integration"),
             patch(
                 "custom_components.integration_tester.create_restart_required_issue"
             ) as mock_restart_issue,

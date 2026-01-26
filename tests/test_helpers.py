@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
+import tarfile
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -444,9 +446,6 @@ class TestExtractIntegration:
     def test_extract_empty_archive_raises(self, tmp_path: Path):
         """Test that empty archive raises ValueError."""
         # Create an empty tarball
-        import io
-        import tarfile
-
         buffer = io.BytesIO()
         with tarfile.open(fileobj=buffer, mode="w:gz"):
             pass

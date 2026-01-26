@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from homeassistant.components.repairs import ConfirmRepairFlow
 from homeassistant.core import HomeAssistant
 
 from custom_components.integration_tester.const import (
@@ -248,7 +249,80 @@ class TestAsyncCreateFixFlow:
     @pytest.mark.asyncio
     async def test_default_flow(self, hass: HomeAssistant):
         """Test default confirm flow for unknown issues."""
-        from homeassistant.components.repairs import ConfirmRepairFlow
-
         flow = await async_create_fix_flow(hass, "unknown_issue", None)
         assert isinstance(flow, ConfirmRepairFlow)
+
+
+class TestRestartRequiredRepairFlow:
+    """Tests for RestartRequiredRepairFlow."""
+
+    @pytest.mark.asyncio
+    async def test_async_step_init_no_input(self, hass: HomeAssistant):
+        """Test flow shows form when no input."""
+        flow = RestartRequiredRepairFlow()
+        flow.hass = hass
+
+        result = await flow.async_step_init(user_input=None)
+
+        assert result["type"] == "form"
+        assert result["step_id"] == "init"
+
+    @pytest.mark.asyncio
+    async def test_async_step_init_with_input(self, hass: HomeAssistant):
+        """Test flow triggers restart when user confirms."""
+        flow = RestartRequiredRepairFlow()
+        # Create a mock hass with mocked services
+        mock_hass = MagicMock()
+        mock_hass.services.async_call = AsyncMock()
+        flow.hass = mock_hass
+
+        result = await flow.async_step_init(user_input={})
+
+        assert result["type"] == "create_entry"
+        mock_hass.services.async_call.assert_called_once_with(
+            "homeassistant", "restart"
+        )
+
+
+class TestDeleteConfigEntryRepairFlow:
+    """Tests for DeleteConfigEntryRepairFlow."""
+
+    @pytest.mark.asyncio
+    async def test_async_step_init_no_input(self, hass: HomeAssistant):
+        """Test flow shows form when no input."""
+        flow = DeleteConfigEntryRepairFlow(entry_id="test_entry_id")
+        flow.hass = hass
+
+        result = await flow.async_step_init(user_input=None)
+
+        assert result["type"] == "form"
+        assert result["step_id"] == "init"
+
+    @pytest.mark.asyncio
+    async def test_async_step_init_with_input_entry_exists(
+        self, hass: HomeAssistant, mock_config_entry
+    ):
+        """Test flow deletes config entry when user confirms."""
+        flow = DeleteConfigEntryRepairFlow(entry_id=mock_config_entry.entry_id)
+        flow.hass = hass
+
+        with patch.object(
+            hass.config_entries, "async_remove", new_callable=AsyncMock
+        ) as mock_remove:
+            result = await flow.async_step_init(user_input={})
+
+        assert result["type"] == "create_entry"
+        mock_remove.assert_called_once_with(mock_config_entry.entry_id)
+
+    @pytest.mark.asyncio
+    async def test_async_step_init_with_input_entry_not_found(
+        self, hass: HomeAssistant
+    ):
+        """Test flow handles missing config entry gracefully."""
+        flow = DeleteConfigEntryRepairFlow(entry_id="nonexistent_entry")
+        flow.hass = hass
+
+        # Should not raise even if entry doesn't exist
+        result = await flow.async_step_init(user_input={})
+
+        assert result["type"] == "create_entry"

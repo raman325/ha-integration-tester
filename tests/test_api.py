@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -528,8 +529,6 @@ class TestGetFileContent:
     @pytest.mark.asyncio
     async def test_get_file_content_base64(self, api_and_client):
         """Test getting file content with base64 encoding."""
-        import base64
-
         api, mock_client = api_and_client
         content = "print('hello world')"
         encoded = base64.b64encode(content.encode()).decode()
