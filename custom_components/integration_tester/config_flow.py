@@ -31,6 +31,7 @@ from .const import (
 )
 from .exceptions import (
     GitHubAPIError,
+    GitHubAuthError,
     InvalidGitHubURLError,
     ManifestNotFoundError,
 )
@@ -76,9 +77,37 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Store token if provided
-            if token := user_input.get(CONF_GITHUB_TOKEN):
-                self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
+            session = async_get_clientsession(self.hass)
+            token = user_input.get(CONF_GITHUB_TOKEN)
+
+            # Validate token if provided
+            if token:
+                try:
+                    test_api = IntegrationTesterGitHubAPI(session, token)
+                    if not await test_api.validate_token():
+                        errors[CONF_GITHUB_TOKEN] = "invalid_token"
+                        return self.async_show_form(
+                            step_id="user",
+                            data_schema=self._get_user_schema(),
+                            errors=errors,
+                        )
+                    # Token is valid, store it
+                    self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
+                except GitHubAuthError:
+                    errors[CONF_GITHUB_TOKEN] = "invalid_token"
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=self._get_user_schema(),
+                        errors=errors,
+                    )
+                except GitHubAPIError as err:
+                    _LOGGER.error("GitHub API error validating token: %s", err)
+                    errors[CONF_GITHUB_TOKEN] = "github_error"
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=self._get_user_schema(),
+                        errors=errors,
+                    )
 
             try:
                 parsed_url = parse_github_url(user_input["url"])
@@ -90,8 +119,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors=errors,
                 )
 
-            # Initialize API client
-            session = async_get_clientsession(self.hass)
+            # Initialize API client with validated token
             token = self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN)
             self._api = IntegrationTesterGitHubAPI(session, token)
 
@@ -299,12 +327,26 @@ class IntegrationTesterOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle options flow."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Store token in hass.data for use by API client
-            self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = user_input[
-                CONF_GITHUB_TOKEN
-            ]
-            return self.async_create_entry(title="", data=user_input)
+            token = user_input[CONF_GITHUB_TOKEN]
+
+            # Validate the new token
+            session = async_get_clientsession(self.hass)
+            try:
+                test_api = IntegrationTesterGitHubAPI(session, token)
+                if not await test_api.validate_token():
+                    errors[CONF_GITHUB_TOKEN] = "invalid_token"
+                else:
+                    # Token is valid, store it
+                    self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
+                    return self.async_create_entry(title="", data=user_input)
+            except GitHubAuthError:
+                errors[CONF_GITHUB_TOKEN] = "invalid_token"
+            except GitHubAPIError as err:
+                _LOGGER.error("GitHub API error validating token: %s", err)
+                errors[CONF_GITHUB_TOKEN] = "github_error"
 
         current_token = self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN, "")
 
@@ -318,6 +360,7 @@ class IntegrationTesterOptionsFlow(OptionsFlow):
                     ): cv.string,
                 }
             ),
+            errors=errors,
             description_placeholders={
                 "domain": self._config_entry.data.get(CONF_INTEGRATION_DOMAIN, ""),
             },

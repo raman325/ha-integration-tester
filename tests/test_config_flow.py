@@ -62,6 +62,9 @@ class TestConfigFlow:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
 
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
+
             # Mock resolve_reference to return ResolvedReference for external repo
             mock_api.resolve_reference = AsyncMock(
                 return_value=create_resolved_reference()
@@ -112,14 +115,21 @@ class TestConfigFlow:
     @pytest.mark.asyncio
     async def test_form_invalid_url(self, hass: HomeAssistant):
         """Test config flow with invalid URL."""
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+            mock_api.validate_token = AsyncMock(return_value=True)
 
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"url": "not-a-valid-url", "github_token": "test_token"},
-        )
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": config_entries.SOURCE_USER}
+            )
+
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {"url": "not-a-valid-url", "github_token": "test_token"},
+            )
 
         assert result["type"] == FlowResultType.FORM
         assert result["errors"] == {"url": "invalid_url"}
@@ -135,6 +145,9 @@ class TestConfigFlow:
         ) as mock_api_cls:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
+
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
 
             # Mock resolve_reference to return ResolvedReference for core repo
             mock_api.resolve_reference = AsyncMock(
@@ -190,6 +203,9 @@ class TestConfigFlow:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
 
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
+
             # Mock resolve_reference to raise error
             mock_api.resolve_reference = AsyncMock(
                 side_effect=GitHubAPIError("API Error")
@@ -234,6 +250,9 @@ class TestConfigFlow:
         ) as mock_api_cls:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
+
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
 
             # Mock resolve_reference
             mock_api.resolve_reference = AsyncMock(
@@ -289,6 +308,9 @@ class TestConfigFlow:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
 
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
+
             # Mock resolve_reference
             mock_api.resolve_reference = AsyncMock(
                 return_value=create_resolved_reference()
@@ -329,6 +351,9 @@ class TestConfigFlow:
         ) as mock_api_cls:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
+
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
 
             # Mock resolve_reference
             mock_api.resolve_reference = AsyncMock(
@@ -382,6 +407,9 @@ class TestConfigFlow:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
 
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
+
             # Mock resolve_reference to return ResolvedReference for core repo
             mock_api.resolve_reference = AsyncMock(
                 return_value=create_resolved_reference(
@@ -431,6 +459,9 @@ class TestConfigFlow:
         ) as mock_api_cls:
             mock_api = MagicMock()
             mock_api_cls.return_value = mock_api
+
+            # Mock token validation
+            mock_api.validate_token = AsyncMock(return_value=True)
 
             # Mock resolve_reference for core repo
             mock_api.resolve_reference = AsyncMock(
@@ -501,17 +532,24 @@ class TestOptionsFlow:
         )
         entry.add_to_hass(hass)
 
-        # Initialize options flow
-        result = await hass.config_entries.options.async_init(entry.entry_id)
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+            mock_api.validate_token = AsyncMock(return_value=True)
 
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "init"
+            # Initialize options flow
+            result = await hass.config_entries.options.async_init(entry.entry_id)
 
-        # Submit new token
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"],
-            {CONF_GITHUB_TOKEN: "new_test_token"},
-        )
+            assert result["type"] == FlowResultType.FORM
+            assert result["step_id"] == "init"
+
+            # Submit new token
+            result = await hass.config_entries.options.async_configure(
+                result["flow_id"],
+                {CONF_GITHUB_TOKEN: "new_test_token"},
+            )
 
         assert result["type"] == FlowResultType.CREATE_ENTRY
         # Token should be stored in hass.data

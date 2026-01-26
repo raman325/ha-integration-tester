@@ -29,6 +29,36 @@ class IntegrationTesterGitHubAPI:
         """Initialize the GitHub API client."""
         self._client = GitHubAPI(token=token, session=session)
 
+    async def validate_token(self) -> bool:
+        """
+        Validate that the configured token works.
+
+        Raises:
+            GitHubAuthError: If token is invalid or expired.
+            GitHubRateLimitError: If rate limited.
+            GitHubAPIError: For other API errors.
+
+        """
+        try:
+            # Use the rate_limit endpoint to validate token
+            # This is lightweight and tells us if we're authenticated
+            response = await self._client.generic("/rate_limit")
+            # If we get here with a token, check we have higher limits (authenticated)
+            rate_data = response.data if hasattr(response, "data") else response
+            if isinstance(rate_data, dict):
+                core_limit = (
+                    rate_data.get("resources", {}).get("core", {}).get("limit", 0)
+                )
+                # Authenticated users get 5000, unauthenticated get 60
+                return core_limit > 60
+            return True
+        except GitHubAuthenticationException as err:
+            raise GitHubAuthError(str(err)) from err
+        except GitHubRatelimitException as err:
+            raise GitHubRateLimitError(str(err)) from err
+        except GitHubException as err:
+            raise GitHubAPIError(str(err)) from err
+
     async def get_pr_info(self, owner: str, repo: str, pr_number: int) -> PRInfo:
         """
         Get information about a pull request.
