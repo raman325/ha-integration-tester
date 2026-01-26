@@ -10,7 +10,7 @@ import pytest
 
 from homeassistant.core import HomeAssistant
 
-from custom_components.integration_tester import async_remove_entry, async_setup_entry
+from custom_components.integration_tester import async_remove_entry
 from custom_components.integration_tester.const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,

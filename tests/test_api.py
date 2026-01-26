@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from aiogithubapi.exceptions import (
     GitHubAuthenticationException,
     GitHubNotFoundException,
     GitHubRatelimitException,
 )
+import pytest
 
 from custom_components.integration_tester.api import IntegrationTesterGitHubAPI
 from custom_components.integration_tester.const import PRState, ReferenceType
@@ -33,9 +33,7 @@ def mock_session():
 @pytest.fixture
 def api_and_client(mock_session):
     """Create an API client instance with mocked GitHubAPI, returning both."""
-    with patch(
-        "custom_components.integration_tester.api.GitHubAPI"
-    ) as mock_github_cls:
+    with patch("custom_components.integration_tester.api.GitHubAPI") as mock_github_cls:
         mock_client = MagicMock()
         mock_client.repos = MagicMock()
         mock_client.repos.contents = MagicMock()
@@ -78,7 +76,9 @@ class TestGetPRInfo:
         assert result.state == PRState.OPEN
 
     @pytest.mark.asyncio
-    async def test_get_pr_info_merged(self, api_and_client, pr_response: dict[str, Any]):
+    async def test_get_pr_info_merged(
+        self, api_and_client, pr_response: dict[str, Any]
+    ):
         """Test getting info for a merged PR."""
         api, mock_client = api_and_client
         pr_response["state"] = "closed"

@@ -16,7 +16,11 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.integration_tester.api import IntegrationTesterGitHubAPI
-from custom_components.integration_tester.const import MARKER_FILE, PRState, ReferenceType
+from custom_components.integration_tester.const import (
+    MARKER_FILE,
+    PRState,
+    ReferenceType,
+)
 from custom_components.integration_tester.exceptions import (
     GitHubAPIError,
     GitHubRateLimitError,
@@ -34,7 +38,7 @@ from custom_components.integration_tester.helpers import (
     validate_custom_integration,
 )
 
-from .conftest import create_mock_response, create_tarball
+from .conftest import create_mock_response
 
 
 class TestParseGitHubURL:
@@ -399,7 +403,9 @@ class TestExtractIntegration:
         assert (result / "manifest.json").exists()
         assert (result / MARKER_FILE).exists()
 
-    def test_extract_core_integration(self, tmp_path: Path, mock_core_archive_data: bytes):
+    def test_extract_core_integration(
+        self, tmp_path: Path, mock_core_archive_data: bytes
+    ):
         """Test extracting a core integration from archive."""
         result = extract_integration(
             config_dir=tmp_path,

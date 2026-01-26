@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -148,7 +147,10 @@ class TestIntegrationUpdateEntity:
     def test_release_url(self, mock_coordinator, mock_pr_entry):
         """Test release URL."""
         entity = IntegrationUpdateEntity(mock_coordinator, mock_pr_entry)
-        assert entity.release_url == "https://github.com/owner/repo/commit/new_commit_sha_12345"
+        assert (
+            entity.release_url
+            == "https://github.com/owner/repo/commit/new_commit_sha_12345"
+        )
 
     def test_release_url_no_data(self, mock_coordinator, mock_pr_entry):
         """Test release URL when no data."""
@@ -176,7 +178,9 @@ class TestIntegrationUpdateEntity:
         assert entity.supported_features == UpdateEntityFeature.INSTALL
 
     @pytest.mark.asyncio
-    async def test_async_install(self, hass: HomeAssistant, mock_coordinator, mock_pr_entry):
+    async def test_async_install(
+        self, hass: HomeAssistant, mock_coordinator, mock_pr_entry
+    ):
         """Test async_install downloads and extracts update."""
         entity = IntegrationUpdateEntity(mock_coordinator, mock_pr_entry)
         entity.hass = hass
@@ -209,7 +213,9 @@ class TestIntegrationUpdateEntity:
         mock_coordinator.async_request_refresh.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_async_install_no_data(self, hass: HomeAssistant, mock_coordinator, mock_pr_entry):
+    async def test_async_install_no_data(
+        self, hass: HomeAssistant, mock_coordinator, mock_pr_entry
+    ):
         """Test async_install does nothing when no data."""
         mock_coordinator.data = None
         entity = IntegrationUpdateEntity(mock_coordinator, mock_pr_entry)

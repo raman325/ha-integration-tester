@@ -14,9 +14,6 @@ from custom_components.integration_tester.const import (
     CONF_REFERENCE_VALUE,
     CONF_URL,
     DOMAIN,
-    REPAIR_DOWNLOAD_FAILED,
-    REPAIR_INTEGRATION_REMOVED,
-    REPAIR_PR_CLOSED,
     REPAIR_RESTART_REQUIRED,
     REPAIR_TOKEN_INVALID,
     ReferenceType,
@@ -149,9 +146,7 @@ class TestRepairIssueCreation:
 
         mock_delete.assert_called_once()
 
-    def test_create_download_failed_issue(
-        self, hass: HomeAssistant, mock_config_entry
-    ):
+    def test_create_download_failed_issue(self, hass: HomeAssistant, mock_config_entry):
         """Test creating download failed issue."""
         with patch(
             "custom_components.integration_tester.repairs.ir.async_create_issue"
