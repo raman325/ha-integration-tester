@@ -108,7 +108,9 @@ class TestCommitSensor:
         mock_entry.data[CONF_REFERENCE_TYPE] = ReferenceType.BRANCH.value
         mock_entry.data[CONF_REFERENCE_VALUE] = "main"
         mock_coordinator.data[DATA_BRANCH_NAME] = "main"
-        mock_coordinator.data[DATA_BRANCH_URL] = "https://github.com/owner/repo/tree/main"
+        mock_coordinator.data[DATA_BRANCH_URL] = (
+            "https://github.com/owner/repo/tree/main"
+        )
 
         sensor = CommitSensor(mock_coordinator, mock_entry)
         attrs = sensor.extra_state_attributes
