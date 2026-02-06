@@ -52,11 +52,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: ConfigEntry[IntegrationTesterCoordinator],
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor entities from a config entry."""
-    coordinator: IntegrationTesterCoordinator = entry.runtime_data
+    coordinator = entry.runtime_data
 
     entities: list[SensorEntity] = [
         CommitSensor(coordinator, entry),

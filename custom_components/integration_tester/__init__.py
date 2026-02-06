@@ -140,7 +140,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 # Trigger restart instead of showing issue
                 _LOGGER.info("Restarting Home Assistant as requested for %s", domain)
                 try:
-                    await hass.services.async_call(HA_DOMAIN, SERVICE_RESTART)
+                    await hass.services.async_call(
+                        HA_DOMAIN, SERVICE_RESTART, blocking=True
+                    )
                 except Exception as err:
                     _LOGGER.error(
                         "Failed to restart Home Assistant for %s: %s", domain, err
