@@ -181,6 +181,58 @@ class TestAsyncHandleAdd:
         )
 
     @pytest.mark.asyncio
+    async def test_add_with_overwrite(self, hass: HomeAssistant):
+        """Test add with overwrite=True passes flag to config flow."""
+        call = MagicMock()
+        call.data = {
+            ATTR_URL: "https://github.com/owner/repo/pull/456",
+            ATTR_OVERWRITE: True,
+            ATTR_RESTART: False,
+        }
+
+        with patch.object(
+            hass.config_entries.flow, "async_init", new_callable=AsyncMock
+        ) as mock_init:
+            mock_init.return_value = {"type": "create_entry", "entry_id": "test_id"}
+            await async_handle_add(hass, call)
+
+        mock_init.assert_called_once_with(
+            DOMAIN,
+            context={"source": "import"},
+            data={
+                "url": "https://github.com/owner/repo/pull/456",
+                "overwrite": True,
+                "restart": False,
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_add_with_restart(self, hass: HomeAssistant):
+        """Test add with restart=True passes flag to config flow."""
+        call = MagicMock()
+        call.data = {
+            ATTR_URL: "https://github.com/owner/repo/pull/789",
+            ATTR_OVERWRITE: False,
+            ATTR_RESTART: True,
+        }
+
+        with patch.object(
+            hass.config_entries.flow, "async_init", new_callable=AsyncMock
+        ) as mock_init:
+            mock_init.return_value = {"type": "create_entry", "entry_id": "test_id"}
+            await async_handle_add(hass, call)
+
+        mock_init.assert_called_once_with(
+            DOMAIN,
+            context={"source": "import"},
+            data={
+                "url": "https://github.com/owner/repo/pull/789",
+                "overwrite": False,
+                "restart": True,
+            },
+        )
+
+    @pytest.mark.asyncio
     async def test_add_abort_raises_error(self, hass: HomeAssistant):
         """Test add raises error when flow aborts."""
         call = MagicMock()
@@ -313,6 +365,30 @@ class TestAsyncHandleRemove:
 
         with pytest.raises(HomeAssistantError, match="No matching"):
             await async_handle_remove(hass, call)
+
+    @pytest.mark.asyncio
+    async def test_remove_with_delete_files_false(
+        self, hass: HomeAssistant, mock_entry_1
+    ):
+        """Test remove with delete_files=False sets skip_file_deletion flag."""
+        call = MagicMock()
+        call.data = {ATTR_DOMAIN: "test_domain_1", ATTR_DELETE_FILES: False}
+
+        flag_key = f"skip_file_deletion_{mock_entry_1.entry_id}"
+
+        async def capture_flag(entry_id):
+            # Capture the flag value during removal
+            assert hass.data[DOMAIN][flag_key] is True
+
+        with patch.object(
+            hass.config_entries, "async_remove", new_callable=AsyncMock
+        ) as mock_remove:
+            mock_remove.side_effect = capture_flag
+            await async_handle_remove(hass, call)
+
+        mock_remove.assert_called_once_with(mock_entry_1.entry_id)
+        # Flag should be cleaned up after removal
+        assert flag_key not in hass.data.get(DOMAIN, {})
 
 
 class TestServiceRegistration:
