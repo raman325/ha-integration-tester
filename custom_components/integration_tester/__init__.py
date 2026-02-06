@@ -39,8 +39,12 @@ from .repairs import (
     remove_pr_closed_issue,
     remove_restart_required_issue,
 )
-from .services import async_register_services
+from .services import SERVICE_ADD, async_register_services
 from .storage import async_load_token
+
+# Constants for homeassistant.restart service call
+HA_DOMAIN = "homeassistant"
+SERVICE_RESTART = "restart"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,8 +59,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if token_from_storage := await async_load_token(hass):
         hass.data[DOMAIN][CONF_GITHUB_TOKEN] = token_from_storage
 
-    # Register services
-    async_register_services(hass)
+    # Register services (guard against double registration on reload)
+    if not hass.services.has_service(DOMAIN, SERVICE_ADD):
+        async_register_services(hass)
 
     return True
 
@@ -125,7 +130,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if should_restart:
                 # Trigger restart instead of showing issue
                 _LOGGER.info("Restarting Home Assistant as requested for %s", domain)
-                await hass.services.async_call("homeassistant", "restart")
+                try:
+                    await hass.services.async_call(HA_DOMAIN, SERVICE_RESTART)
+                except Exception as err:
+                    _LOGGER.error(
+                        "Failed to restart Home Assistant for %s: %s", domain, err
+                    )
+                    # Fall back to creating a restart required issue
+                    create_restart_required_issue(hass, entry, domain)
             else:
                 # Create restart required issue
                 create_restart_required_issue(hass, entry, domain)

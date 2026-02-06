@@ -139,7 +139,13 @@ def _find_entry_by_criteria(
                 entry_owner_repo = f"{entry_parsed.owner}/{entry_parsed.repo}"
                 if entry_owner_repo == owner_repo:
                     return entry
-            except Exception:
+            except Exception as exc:
+                _LOGGER.debug(
+                    "Failed to parse URL '%s' for entry '%s': %s",
+                    entry_url,
+                    entry.entry_id,
+                    exc,
+                )
                 continue
         return None
 
@@ -184,7 +190,13 @@ async def async_handle_list(hass: HomeAssistant, call: ServiceCall) -> ServiceRe
         try:
             parsed = parse_github_url(entry_url)
             owner_repo = f"{parsed.owner}/{parsed.repo}"
-        except Exception:
+        except Exception as exc:
+            _LOGGER.debug(
+                "Failed to parse URL '%s' for entry '%s': %s",
+                entry_url,
+                entry.entry_id,
+                exc,
+            )
             owner_repo = "unknown"
 
         result.append(
@@ -226,10 +238,15 @@ async def async_handle_remove(hass: HomeAssistant, call: ServiceCall) -> None:
     # Store flag to indicate whether async_remove_entry should delete files
     # This is checked by async_remove_entry in __init__.py
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][f"skip_file_deletion_{entry.entry_id}"] = not delete_files
+    flag_key = f"skip_file_deletion_{entry.entry_id}"
+    hass.data[DOMAIN][flag_key] = not delete_files
 
     # Remove the config entry (triggers async_remove_entry callback)
-    await hass.config_entries.async_remove(entry.entry_id)
+    try:
+        await hass.config_entries.async_remove(entry.entry_id)
+    finally:
+        # Ensure the flag is cleaned up even if async_remove fails
+        hass.data[DOMAIN].pop(flag_key, None)
 
 
 def async_register_services(hass: HomeAssistant) -> None:
