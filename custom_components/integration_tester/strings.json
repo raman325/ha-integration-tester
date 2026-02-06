@@ -51,7 +51,7 @@
       "multiple_integrations_found": "This PR modifies multiple integrations. Please use the UI to select which integration to install.",
       "missing_url": "No URL was provided.",
       "no_token": "No GitHub token is configured. Please set up via the UI first.",
-      "core_requires_pr": "For Home Assistant core repository, a pull request URL is required."
+      "core_requires_pr": "Cannot install from Home Assistant core repository without a PR. Use a pull request URL to specify which integration to extract."
     }
   },
   "options": {
