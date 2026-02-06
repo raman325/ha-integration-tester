@@ -39,6 +39,7 @@ from .repairs import (
     remove_pr_closed_issue,
     remove_restart_required_issue,
 )
+from .services import async_register_services
 from .storage import async_load_token
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,6 +54,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Load token from storage so it's available for all config entries
     if token_from_storage := await async_load_token(hass):
         hass.data[DOMAIN][CONF_GITHUB_TOKEN] = token_from_storage
+
+    # Register services
+    async_register_services(hass)
 
     return True
 
@@ -114,8 +118,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 data={**entry.data, CONF_INSTALLED_COMMIT: commit_sha},
             )
 
-            # Create restart required issue
-            create_restart_required_issue(hass, entry, domain)
+            # Check if restart was requested (set by config flow)
+            restart_key = f"restart_after_install_{domain}"
+            should_restart = hass.data.get(DOMAIN, {}).pop(restart_key, False)
+
+            if should_restart:
+                # Trigger restart instead of showing issue
+                _LOGGER.info("Restarting Home Assistant as requested for %s", domain)
+                await hass.services.async_call("homeassistant", "restart")
+            else:
+                # Create restart required issue
+                create_restart_required_issue(hass, entry, domain)
 
         except Exception as err:
             _LOGGER.error("Failed to download integration %s: %s", domain, err)
@@ -125,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = IntegrationTesterCoordinator(hass, entry)
 
     # Store coordinator
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
     # Do initial refresh
     await coordinator.async_config_entry_first_refresh()
@@ -138,9 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
-
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return unload_ok
 
 
@@ -151,10 +162,16 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     # rather than parsed URL (only checks for home-assistant/core literally)
     is_core = entry.data.get(CONF_IS_PART_OF_HA_CORE, False)
 
-    # Remove the integration files
-    if integration_exists(hass, domain):
+    # Check if file deletion should be skipped (set by remove service)
+    skip_file_deletion_key = f"skip_file_deletion_{entry.entry_id}"
+    skip_file_deletion = hass.data.get(DOMAIN, {}).pop(skip_file_deletion_key, False)
+
+    # Remove the integration files (unless skipped)
+    files_deleted = False
+    if not skip_file_deletion and integration_exists(hass, domain):
         await remove_integration(hass, domain)
         _LOGGER.info("Removed integration files for %s", domain)
+        files_deleted = True
 
     # Clean up repair issues
     remove_restart_required_issue(hass, domain)
@@ -163,13 +180,19 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     remove_download_failed_issue(hass, domain)
 
     # Create notification about removal
-    if is_core:
+    if skip_file_deletion:
+        message = (
+            f"Integration Tester removed the config entry for `{domain}` but "
+            f"left the integration files in `custom_components/`. The integration "
+            f"will continue to work but is no longer managed by Integration Tester."
+        )
+    elif files_deleted and is_core:
         message = (
             f"Integration Tester removed the `{domain}` override by deleting "
             f"the custom version from `custom_components/`. After restart, "
             f"Home Assistant will use the built-in `{domain}` integration."
         )
-    else:
+    elif files_deleted:
         message = (
             f"Integration Tester removed `{domain}` by deleting the "
             f"integration from `custom_components/`. After restart, "
@@ -177,6 +200,8 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             f"existing config entries will stop working. Reinstall via HACS "
             f"or manually if needed."
         )
+    else:
+        message = f"Integration Tester removed the config entry for `{domain}`."
 
     async_create_notification(
         hass,

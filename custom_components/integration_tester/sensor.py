@@ -40,7 +40,6 @@ from .const import (
     DATA_SOURCE_BRANCH,
     DATA_SOURCE_REPO_URL,
     DATA_TARGET_BRANCH,
-    DOMAIN,
     ReferenceType,
 )
 from .coordinator import IntegrationTesterCoordinator
@@ -57,7 +56,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor entities from a config entry."""
-    coordinator: IntegrationTesterCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: IntegrationTesterCoordinator = entry.runtime_data
 
     entities: list[SensorEntity] = [
         CommitSensor(coordinator, entry),

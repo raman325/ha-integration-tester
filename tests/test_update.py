@@ -96,7 +96,7 @@ class TestUpdateEntitySetup:
         self, hass: HomeAssistant, mock_pr_entry, mock_coordinator
     ):
         """Test setup creates update entity for PR entries."""
-        hass.data[DOMAIN] = {mock_pr_entry.entry_id: mock_coordinator}
+        mock_pr_entry.runtime_data = mock_coordinator
 
         entities = []
 
@@ -113,7 +113,7 @@ class TestUpdateEntitySetup:
         self, hass: HomeAssistant, mock_commit_entry, mock_coordinator
     ):
         """Test setup does not create update entity for commit entries."""
-        hass.data[DOMAIN] = {mock_commit_entry.entry_id: mock_coordinator}
+        mock_commit_entry.runtime_data = mock_coordinator
 
         entities = []
 

@@ -81,16 +81,85 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         # For core PRs that modify multiple integrations
         self._available_integrations: list[str] = []
         self._selected_domain: str | None = None
+        self._restart_after_install: bool = False
+        self._overwrite_existing: bool = False
+        self._existing_entry_to_remove: ConfigEntry | None = None
 
     def _get_user_schema(self) -> vol.Schema:
         """Get the schema for the user step, including token field if not configured."""
-        schema = {vol.Required("url"): cv.string}
+        schema: dict[vol.Marker, Any] = {vol.Required("url"): cv.string}
 
         # Require token if not already configured
         if not self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN):
             schema[vol.Required(CONF_GITHUB_TOKEN)] = cv.string
 
+        # Add restart option
+        schema[vol.Optional("restart", default=False)] = cv.boolean
+
         return vol.Schema(schema)
+
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Handle import from service call."""
+        # Import step receives {"url": "...", "overwrite": bool, "restart": bool}
+        # Process like user step but without showing forms on error
+        url = import_data.get("url")
+        if not url:
+            return self.async_abort(reason="missing_url")
+
+        # Store options from import data
+        self._overwrite_existing = import_data.get("overwrite", False)
+        self._restart_after_install = import_data.get("restart", False)
+
+        try:
+            parsed_url = parse_github_url(url)
+        except InvalidGitHubURLError:
+            return self.async_abort(reason="invalid_url")
+
+        # Check if token is configured
+        token = self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN)
+        if not token:
+            return self.async_abort(reason="no_token")
+
+        session = async_get_clientsession(self.hass)
+        self._api = IntegrationTesterGitHubAPI(session, token)
+
+        try:
+            self._resolved = await self._api.resolve_reference(parsed_url)
+
+            if self._resolved.is_part_of_ha_core:
+                # For core PRs, we need user interaction to select integration
+                if self._resolved.reference_type == ReferenceType.PR:
+                    integrations = await self._api.get_core_pr_integrations(
+                        self._resolved.owner,
+                        self._resolved.repo,
+                        int(self._resolved.reference_value),
+                    )
+                    if not integrations:
+                        return self.async_abort(reason="no_integrations_found")
+                    if len(integrations) > 1:
+                        # Multiple integrations require user selection
+                        self._available_integrations = integrations
+                        return await self.async_step_select_integration()
+                    self._selected_domain = integrations[0]
+                else:
+                    return self.async_abort(reason="core_requires_pr")
+            else:
+                # External repo
+                self._integration_info = await validate_custom_integration(
+                    self._api,
+                    self._resolved.owner,
+                    self._resolved.repo,
+                    self._resolved.commit_sha,
+                )
+                self._selected_domain = self._integration_info.domain
+
+            return await self._check_existing_integration()
+
+        except ManifestNotFoundError:
+            return self.async_abort(reason="manifest_not_found")
+        except GitHubAPIError as err:
+            _LOGGER.error("GitHub API error during import: %s", err)
+            return self.async_abort(reason="github_error")
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -100,6 +169,9 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
+            # Store restart preference
+            self._restart_after_install = user_input.get("restart", False)
+
             session = async_get_clientsession(self.hass)
 
             # Only validate token if it was provided in the form (not already stored)
@@ -274,9 +346,13 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         # Check for existing Integration Tester entry with same unique ID
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             if entry.unique_id == self.unique_id:
-                if entry.data[CONF_URL] == self._resolved.repo_url:
-                    return self.async_abort(reason="already_configured_same_repo")
-                return self.async_abort(reason="already_configured_different_repo")
+                # If overwrite was requested (from service), remove existing and proceed
+                if self._overwrite_existing:
+                    self._existing_entry_to_remove = entry
+                    return await self._remove_existing_and_create()
+                # Otherwise, show confirmation step (for UI flow)
+                self._existing_entry_to_remove = entry
+                return await self.async_step_confirm_entry_overwrite()
 
         # Check if folder exists
         if integration_exists(self.hass, self._selected_domain):
@@ -292,7 +368,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_confirm_overwrite(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle confirmation to overwrite existing integration."""
+        """Handle confirmation to overwrite existing integration files (not managed by us)."""
         if user_input is not None:
             if user_input.get("confirm"):
                 return await self._create_entry()
@@ -308,6 +384,44 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
             description_placeholders={"domain": self._selected_domain},
         )
+
+    async def async_step_confirm_entry_overwrite(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle confirmation to overwrite existing Integration Tester entry."""
+        if user_input is not None:
+            if user_input.get("confirm"):
+                self._overwrite_existing = True
+                return await self._remove_existing_and_create()
+            else:
+                return self.async_abort(reason="user_cancelled")
+
+        # Get info about existing entry for display
+        existing_url = ""
+        if self._existing_entry_to_remove:
+            existing_url = self._existing_entry_to_remove.data.get(CONF_URL, "")
+
+        return self.async_show_form(
+            step_id="confirm_entry_overwrite",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("confirm", default=False): bool,
+                }
+            ),
+            description_placeholders={
+                "domain": self._selected_domain,
+                "existing_url": existing_url,
+            },
+        )
+
+    async def _remove_existing_and_create(self) -> ConfigFlowResult:
+        """Remove existing entry and create new one."""
+        if self._existing_entry_to_remove:
+            await self.hass.config_entries.async_remove(
+                self._existing_entry_to_remove.entry_id
+            )
+            self._existing_entry_to_remove = None
+        return await self._create_entry()
 
     async def _create_entry(self) -> ConfigFlowResult:
         """
@@ -357,6 +471,14 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_INSTALLED_COMMIT: self._get_current_ref(),
             CONF_IS_PART_OF_HA_CORE: self._resolved.is_part_of_ha_core,
         }
+
+        # Pass restart flag via hass.data for async_setup_entry to pick up
+        # The entry_id won't be known until after create, so we store by domain
+        if self._restart_after_install and self._selected_domain:
+            self.hass.data.setdefault(DOMAIN, {})
+            self.hass.data[DOMAIN][f"restart_after_install_{self._selected_domain}"] = (
+                True
+            )
 
         return self.async_create_entry(title=title, data=data)
 

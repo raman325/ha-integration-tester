@@ -1,0 +1,71 @@
+---
+add:
+  name: Add Integration
+  description: Add a new integration from a GitHub URL.
+  fields:
+    url:
+      name: GitHub URL
+      description: The GitHub URL to download from (PR, branch, or commit URL).
+      required: true
+      example: "https://github.com/owner/repo/pull/123"
+      selector:
+        text:
+    overwrite:
+      name: Overwrite Existing
+      description: >-
+        If an existing Integration Tester entry exists for this domain,
+        remove it and create a new one. Default is false (raises an error on conflict).
+      default: false
+      selector:
+        boolean:
+    restart:
+      name: Restart After Install
+      description: >-
+        Automatically restart Home Assistant after the integration is installed.
+        Default is false.
+      default: false
+      selector:
+        boolean:
+
+list:
+  name: List Integrations
+  description: List all integrations managed by Integration Tester.
+
+remove:
+  name: Remove Integration
+  description: >-
+    Remove an integration managed by Integration Tester.
+    Provide exactly one of domain, url, owner_repo, or entry_id.
+  fields:
+    domain:
+      name: Domain
+      description: The integration domain to delete.
+      example: "my_integration"
+      selector:
+        text:
+    url:
+      name: GitHub URL
+      description: The GitHub URL of the integration to delete.
+      example: "https://github.com/owner/repo/pull/123"
+      selector:
+        text:
+    owner_repo:
+      name: Owner/Repo
+      description: The GitHub owner/repo slug (e.g., "owner/repo").
+      example: "owner/repo"
+      selector:
+        text:
+    entry_id:
+      name: Config Entry
+      description: The config entry to delete.
+      selector:
+        config_entry:
+          integration: integration_tester
+    delete_files:
+      name: Delete Integration Files
+      description: >-
+        Delete the integration files from custom_components/.
+        If false, only removes the config entry and leaves files in place. Default is true.
+      default: true
+      selector:
+        boolean:

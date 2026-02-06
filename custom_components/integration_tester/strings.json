@@ -6,10 +6,12 @@
         "description": "Enter a GitHub URL to download a custom integration.\n\nSupported formats:\n- `github.com/owner/repo` (default branch)\n- `github.com/owner/repo/tree/branch-name`\n- `github.com/owner/repo/pull/123`\n- `github.com/owner/repo/commit/abc123`",
         "data": {
           "url": "GitHub URL",
-          "github_token": "GitHub Personal Access Token"
+          "github_token": "GitHub Personal Access Token",
+          "restart": "Restart after install"
         },
         "data_description": {
-          "github_token": "Required for API rate limits. Create a token at github.com/settings/tokens with no special scopes needed for public repos."
+          "github_token": "Required for API rate limits. Create a token at github.com/settings/tokens with no special scopes needed for public repos.",
+          "restart": "Automatically restart Home Assistant after the integration is installed."
         }
       },
       "select_integration": {
@@ -24,6 +26,13 @@
         "description": "The folder `custom_components/{domain}` already exists but wasn't installed by Integration Tester.\n\nProceeding will **delete the existing folder** and replace it.\n\nIf you previously installed this integration via HACS, note that HACS could overwrite the PR/branch/commit version of the integration with a released version, or vice versa.\n\nIt is recommended that the integration is removed from HACS while you manage it via Integration Tester, and once you are done, delete it from Integration Tester and re-add it to HACS.\n\nNote that you may need to reconfigure the integration depending on what's changed between versions.",
         "data": {
           "confirm": "I understand, proceed anyway"
+        }
+      },
+      "confirm_entry_overwrite": {
+        "title": "Replace Existing Entry",
+        "description": "Integration Tester is already tracking `{domain}` from:\n\n`{existing_url}`\n\nDo you want to **remove the existing entry** and track from the new source instead?",
+        "data": {
+          "confirm": "Yes, replace the existing entry"
         }
       }
     },
