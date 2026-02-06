@@ -227,6 +227,8 @@ class TestSetup:
         # Verify restart was called instead of issue
         assert len(restart_called) == 1
         mock_restart_issue.assert_not_called()
+        # Verify restart_after_install flag was cleared to prevent restart loops
+        assert "restart_after_install" not in entry.options
 
 
 class TestRemoval:

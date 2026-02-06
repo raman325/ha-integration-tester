@@ -149,8 +149,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 # Trigger restart and return immediately - no point setting up
                 # coordinator/platforms since HA is about to restart anyway.
                 _LOGGER.info("Restarting Home Assistant as requested for %s", domain)
-                await hass.services.async_call(HA_DOMAIN, SERVICE_RESTART)
-                return True
+                try:
+                    await hass.services.async_call(HA_DOMAIN, SERVICE_RESTART)
+                    return True
+                except Exception as err:
+                    _LOGGER.error(
+                        "Failed to restart Home Assistant for %s: %s", domain, err
+                    )
+                    # Fall through to create repair issue and continue setup
 
             # Create restart required issue
             create_restart_required_issue(hass, entry, domain)
