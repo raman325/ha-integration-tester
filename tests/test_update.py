@@ -91,7 +91,6 @@ def mock_commit_entry(hass: HomeAssistant):
 class TestUpdateEntitySetup:
     """Tests for update entity setup."""
 
-    @pytest.mark.asyncio
     async def test_setup_creates_entity_for_pr(
         self, hass: HomeAssistant, mock_pr_entry, mock_coordinator
     ):
@@ -108,7 +107,6 @@ class TestUpdateEntitySetup:
         assert len(entities) == 1
         assert isinstance(entities[0], IntegrationUpdateEntity)
 
-    @pytest.mark.asyncio
     async def test_setup_skips_entity_for_commit(
         self, hass: HomeAssistant, mock_commit_entry, mock_coordinator
     ):
@@ -177,7 +175,6 @@ class TestIntegrationUpdateEntity:
         entity = IntegrationUpdateEntity(mock_coordinator, mock_pr_entry)
         assert entity.supported_features == UpdateEntityFeature.INSTALL
 
-    @pytest.mark.asyncio
     async def test_async_install(
         self, hass: HomeAssistant, mock_coordinator, mock_pr_entry
     ):
@@ -210,7 +207,6 @@ class TestIntegrationUpdateEntity:
         mock_restart_issue.assert_called_once()
         mock_coordinator.async_request_refresh.assert_called_once()
 
-    @pytest.mark.asyncio
     async def test_async_install_no_data(
         self, hass: HomeAssistant, mock_coordinator, mock_pr_entry
     ):
@@ -226,7 +222,6 @@ class TestIntegrationUpdateEntity:
 
         mock_api_cls.assert_not_called()
 
-    @pytest.mark.asyncio
     async def test_async_install_no_commit(
         self, hass: HomeAssistant, mock_coordinator, mock_pr_entry
     ):

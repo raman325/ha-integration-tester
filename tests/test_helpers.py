@@ -127,7 +127,6 @@ class TestParseGitHubURL:
 class TestIntegrationTesterGitHubAPI:
     """Tests for IntegrationTesterGitHubAPI class."""
 
-    @pytest.mark.asyncio
     async def test_get_pr_info(self, pr_response: dict[str, Any]):
         """Test getting PR info."""
         with patch(
@@ -154,7 +153,6 @@ class TestIntegrationTesterGitHubAPI:
         assert result.head_sha == "e937d69acdeab0dc5eba5dbbc3418d78f4459533"
         assert result.state == PRState.OPEN
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_merged(self, pr_response: dict[str, Any]):
         """Test getting merged PR info."""
         with patch(
@@ -175,7 +173,6 @@ class TestIntegrationTesterGitHubAPI:
 
         assert result.state == PRState.MERGED
 
-    @pytest.mark.asyncio
     async def test_get_commit_info(self, commit_response: dict[str, Any]):
         """Test getting commit info."""
         with patch(
@@ -194,7 +191,6 @@ class TestIntegrationTesterGitHubAPI:
         assert result.sha == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
         assert "ruff" in result.message.lower()
 
-    @pytest.mark.asyncio
     async def test_get_branch_info(self, branch_response: dict[str, Any]):
         """Test getting branch info."""
         with patch(
@@ -213,7 +209,6 @@ class TestIntegrationTesterGitHubAPI:
         assert result.name == "main"
         assert result.head_sha == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
 
-    @pytest.mark.asyncio
     async def test_get_core_pr_integrations(
         self, core_pr_files_response: list[dict[str, Any]]
     ):
@@ -240,7 +235,6 @@ class TestIntegrationTesterGitHubAPI:
 
         assert "niko_home_control" in result
 
-    @pytest.mark.asyncio
     async def test_rate_limit_error(self):
         """Test rate limit error handling."""
         with patch(
@@ -257,7 +251,6 @@ class TestIntegrationTesterGitHubAPI:
             with pytest.raises(GitHubRateLimitError):
                 await api.get_pr_info("owner", "repo", 1)
 
-    @pytest.mark.asyncio
     async def test_not_found_error(self):
         """Test 404 error handling."""
         with patch(
@@ -274,7 +267,6 @@ class TestIntegrationTesterGitHubAPI:
             with pytest.raises(GitHubAPIError, match="not found"):
                 await api.get_pr_info("owner", "repo", 999)
 
-    @pytest.mark.asyncio
     async def test_with_token(self, pr_response: dict[str, Any]):
         """Test API with authentication token."""
         with patch(
@@ -293,7 +285,6 @@ class TestIntegrationTesterGitHubAPI:
             # Verify GitHub was instantiated with token and session
             mock_github_cls.assert_called_once_with(token="test-token", session=session)
 
-    @pytest.mark.asyncio
     async def test_without_token(self, pr_response: dict[str, Any]):
         """Test API without authentication token."""
         with patch(
@@ -312,7 +303,6 @@ class TestIntegrationTesterGitHubAPI:
             # Verify GitHub was instantiated without a token
             mock_github_cls.assert_called_once_with(token=None, session=session)
 
-    @pytest.mark.asyncio
     async def test_download_archive(self):
         """Test downloading archive."""
         with patch(
@@ -330,7 +320,6 @@ class TestIntegrationTesterGitHubAPI:
 
         assert result == b"tarball content"
 
-    @pytest.mark.asyncio
     async def test_file_exists_true(self):
         """Test file_exists returns True when file exists."""
         with patch(
@@ -348,7 +337,6 @@ class TestIntegrationTesterGitHubAPI:
 
         assert result is True
 
-    @pytest.mark.asyncio
     async def test_file_exists_false(self):
         """Test file_exists returns False when file doesn't exist."""
         with patch(
@@ -366,7 +354,6 @@ class TestIntegrationTesterGitHubAPI:
 
         assert result is False
 
-    @pytest.mark.asyncio
     async def test_get_default_branch(self):
         """Test getting default branch."""
         with patch(
@@ -463,7 +450,6 @@ class TestExtractIntegration:
 class TestValidateCustomIntegration:
     """Tests for validate_custom_integration helper."""
 
-    @pytest.mark.asyncio
     async def test_validate_custom_integration_success(
         self, manifest_json_contents: dict[str, Any]
     ):
@@ -484,7 +470,6 @@ class TestValidateCustomIntegration:
         assert result.domain == "lock_code_manager"
         assert result.is_part_of_ha_core is False
 
-    @pytest.mark.asyncio
     async def test_validate_custom_integration_no_manifest(self):
         """Test that missing manifest raises ManifestNotFoundError."""
         mock_api = MagicMock()
@@ -498,7 +483,6 @@ class TestValidateCustomIntegration:
         with pytest.raises(ManifestNotFoundError):
             await validate_custom_integration(mock_api, "owner", "repo", "main")
 
-    @pytest.mark.asyncio
     async def test_validate_custom_integration_no_custom_components(self):
         """Test that missing custom_components raises ManifestNotFoundError."""
         mock_api = MagicMock()
@@ -515,7 +499,6 @@ class TestValidateCustomIntegration:
 class TestGetCoreIntegrationInfo:
     """Tests for get_core_integration_info helper."""
 
-    @pytest.mark.asyncio
     async def test_get_core_integration_info_success(self):
         """Test getting core integration info successfully."""
         mock_api = MagicMock()
@@ -533,7 +516,6 @@ class TestGetCoreIntegrationInfo:
         assert result.name == "Philips Hue"
         assert result.is_part_of_ha_core is True
 
-    @pytest.mark.asyncio
     async def test_get_core_integration_info_not_found(self):
         """Test that missing integration raises IntegrationNotFoundError."""
         mock_api = MagicMock()
@@ -580,7 +562,6 @@ class TestIntegrationHelpers:
         with patch.object(hass.config, "config_dir", str(tmp_path)):
             assert integration_exists(hass, "nonexistent") is False
 
-    @pytest.mark.asyncio
     async def test_remove_integration(self, hass: HomeAssistant, tmp_path: Path):
         """Test removing an integration directory."""
         # Create integration directory
@@ -593,7 +574,6 @@ class TestIntegrationHelpers:
 
         assert not integration_dir.exists()
 
-    @pytest.mark.asyncio
     async def test_remove_integration_nonexistent(
         self, hass: HomeAssistant, tmp_path: Path
     ):

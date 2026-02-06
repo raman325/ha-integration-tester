@@ -48,7 +48,6 @@ def mock_config_entry(hass: HomeAssistant):
 class TestSetup:
     """Tests for async_setup_entry."""
 
-    @pytest.mark.asyncio
     async def test_setup_entry_with_existing_commit(
         self,
         hass: HomeAssistant,
@@ -74,7 +73,6 @@ class TestSetup:
         assert DOMAIN in hass.data
         assert mock_config_entry.runtime_data is not None
 
-    @pytest.mark.asyncio
     async def test_setup_entry_fresh_install(
         self,
         hass: HomeAssistant,
@@ -149,7 +147,6 @@ class TestSetup:
         # Verify restart issue was created
         mock_restart_issue.assert_called_once()
 
-    @pytest.mark.asyncio
     async def test_setup_entry_fresh_install_with_restart(
         self,
         hass: HomeAssistant,
@@ -235,7 +232,6 @@ class TestSetup:
 class TestRemoval:
     """Tests for async_remove_entry."""
 
-    @pytest.mark.asyncio
     async def test_remove_entry_deletes_files(
         self,
         hass: HomeAssistant,
@@ -268,7 +264,6 @@ class TestRemoval:
             "title", ""
         ) or "test_domain" in str(call_args)
 
-    @pytest.mark.asyncio
     async def test_remove_entry_core_integration_message(
         self,
         hass: HomeAssistant,
@@ -310,7 +305,6 @@ class TestRemoval:
         assert "built-in" in message
         assert "zwave_js" in message
 
-    @pytest.mark.asyncio
     async def test_remove_entry_skip_file_deletion(
         self,
         hass: HomeAssistant,

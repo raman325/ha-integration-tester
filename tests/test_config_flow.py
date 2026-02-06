@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -50,7 +48,6 @@ def create_resolved_reference(
 class TestConfigFlow:
     """Tests for config flow."""
 
-    @pytest.mark.asyncio
     async def test_form_valid_pr_url(
         self,
         hass: HomeAssistant,
@@ -112,7 +109,6 @@ class TestConfigFlow:
         assert result["data"][CONF_REFERENCE_TYPE] == ReferenceType.PR.value
         assert result["data"][CONF_REFERENCE_VALUE] == "1"
 
-    @pytest.mark.asyncio
     async def test_form_invalid_url(self, hass: HomeAssistant):
         """Test config flow with invalid URL."""
         with patch(
@@ -134,7 +130,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.FORM
         assert result["errors"] == {"url": "invalid_url"}
 
-    @pytest.mark.asyncio
     async def test_form_core_pr_single_integration(
         self,
         hass: HomeAssistant,
@@ -191,7 +186,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"][CONF_INTEGRATION_DOMAIN] == "niko_home_control"
 
-    @pytest.mark.asyncio
     async def test_form_github_error(
         self,
         hass: HomeAssistant,
@@ -226,7 +220,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.FORM
         assert result["errors"] == {"base": "github_error"}
 
-    @pytest.mark.asyncio
     async def test_form_already_configured_shows_confirm_step(
         self,
         hass: HomeAssistant,
@@ -284,7 +277,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "confirm_entry_overwrite"
 
-    @pytest.mark.asyncio
     async def test_form_already_configured_confirm_overwrites(
         self,
         hass: HomeAssistant,
@@ -351,7 +343,6 @@ class TestConfigFlow:
         # Should create new entry (old one was removed)
         assert result["type"] == FlowResultType.CREATE_ENTRY
 
-    @pytest.mark.asyncio
     async def test_form_already_configured_cancel_aborts(
         self,
         hass: HomeAssistant,
@@ -419,7 +410,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "user_cancelled"
 
-    @pytest.mark.asyncio
     async def test_form_confirm_overwrite(
         self,
         hass: HomeAssistant,
@@ -474,7 +464,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "confirm_overwrite"
 
-    @pytest.mark.asyncio
     async def test_form_core_pr_multiple_integrations(
         self,
         hass: HomeAssistant,
@@ -527,7 +516,6 @@ class TestConfigFlow:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "select_integration"
 
-    @pytest.mark.asyncio
     async def test_form_select_integration_step(
         self,
         hass: HomeAssistant,
@@ -593,7 +581,6 @@ class TestConfigFlow:
 class TestImportFlow:
     """Tests for import flow (service-triggered)."""
 
-    @pytest.mark.asyncio
     async def test_import_success(self, hass: HomeAssistant):
         """Test successful import flow."""
         # Set up token in hass.data
@@ -634,7 +621,6 @@ class TestImportFlow:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert "Lock Code Manager" in result["title"]
 
-    @pytest.mark.asyncio
     async def test_import_missing_url(self, hass: HomeAssistant):
         """Test import flow aborts when URL is missing."""
         hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
@@ -648,7 +634,6 @@ class TestImportFlow:
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "missing_url"
 
-    @pytest.mark.asyncio
     async def test_import_invalid_url(self, hass: HomeAssistant):
         """Test import flow aborts for invalid URL."""
         hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
@@ -662,7 +647,6 @@ class TestImportFlow:
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "invalid_url"
 
-    @pytest.mark.asyncio
     async def test_import_no_token(self, hass: HomeAssistant):
         """Test import flow aborts when no token configured."""
         # No token in hass.data
@@ -677,7 +661,6 @@ class TestImportFlow:
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "no_token"
 
-    @pytest.mark.asyncio
     async def test_import_github_error(self, hass: HomeAssistant):
         """Test import flow aborts on GitHub API error."""
         hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
@@ -701,7 +684,6 @@ class TestImportFlow:
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "github_error"
 
-    @pytest.mark.asyncio
     async def test_import_core_pr_multiple_integrations(self, hass: HomeAssistant):
         """Test import flow aborts for core PR with multiple integrations."""
         hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
@@ -741,7 +723,6 @@ class TestImportFlow:
 class TestOptionsFlow:
     """Tests for options flow."""
 
-    @pytest.mark.asyncio
     async def test_options_flow_update_token(self, hass: HomeAssistant):
         """Test updating token via options flow."""
         # Create existing entry

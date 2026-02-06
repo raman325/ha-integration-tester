@@ -154,7 +154,6 @@ class TestFindEntryByCriteria:
 class TestAsyncHandleAdd:
     """Tests for async_handle_add."""
 
-    @pytest.mark.asyncio
     async def test_add_success(self, hass: HomeAssistant):
         """Test successful add creates config entry."""
         call = MagicMock()
@@ -180,7 +179,6 @@ class TestAsyncHandleAdd:
             },
         )
 
-    @pytest.mark.asyncio
     async def test_add_with_overwrite(self, hass: HomeAssistant):
         """Test add with overwrite=True passes flag to config flow."""
         call = MagicMock()
@@ -206,7 +204,6 @@ class TestAsyncHandleAdd:
             },
         )
 
-    @pytest.mark.asyncio
     async def test_add_with_restart(self, hass: HomeAssistant):
         """Test add with restart=True passes flag to config flow."""
         call = MagicMock()
@@ -232,7 +229,6 @@ class TestAsyncHandleAdd:
             },
         )
 
-    @pytest.mark.asyncio
     async def test_add_abort_raises_error(self, hass: HomeAssistant):
         """Test add raises error when flow aborts."""
         call = MagicMock()
@@ -249,7 +245,6 @@ class TestAsyncHandleAdd:
             with pytest.raises(HomeAssistantError, match="already_configured"):
                 await async_handle_add(hass, call)
 
-    @pytest.mark.asyncio
     async def test_add_form_with_errors(self, hass: HomeAssistant):
         """Test add raises error when flow shows form with errors."""
         call = MagicMock()
@@ -269,7 +264,6 @@ class TestAsyncHandleAdd:
             with pytest.raises(HomeAssistantError, match="invalid_url"):
                 await async_handle_add(hass, call)
 
-    @pytest.mark.asyncio
     async def test_add_form_requires_interaction(self, hass: HomeAssistant):
         """Test add raises error when flow requires user interaction."""
         call = MagicMock()
@@ -290,14 +284,12 @@ class TestAsyncHandleAdd:
 class TestAsyncHandleList:
     """Tests for async_handle_list."""
 
-    @pytest.mark.asyncio
     async def test_list_empty(self, hass: HomeAssistant):
         """Test list returns empty when no entries."""
         call = MagicMock()
         result = await async_handle_list(hass, call)
         assert result == {"entries": [], "count": 0}
 
-    @pytest.mark.asyncio
     async def test_list_with_entries(
         self, hass: HomeAssistant, mock_entry_1, mock_entry_2
     ):
@@ -319,7 +311,6 @@ class TestAsyncHandleList:
 class TestAsyncHandleRemove:
     """Tests for async_handle_remove."""
 
-    @pytest.mark.asyncio
     async def test_remove_by_domain(self, hass: HomeAssistant, mock_entry_1):
         """Test delete by domain."""
         call = MagicMock()
@@ -332,7 +323,6 @@ class TestAsyncHandleRemove:
 
         mock_remove.assert_called_once_with(mock_entry_1.entry_id)
 
-    @pytest.mark.asyncio
     async def test_remove_by_entry_id(self, hass: HomeAssistant, mock_entry_1):
         """Test delete by entry_id."""
         call = MagicMock()
@@ -355,7 +345,6 @@ class TestAsyncHandleRemove:
         with pytest.raises(vol.MultipleInvalid):
             SERVICE_REMOVE_SCHEMA({"domain": "test", "entry_id": "123"})
 
-    @pytest.mark.asyncio
     async def test_remove_not_found_raises_error(
         self, hass: HomeAssistant, mock_entry_1
     ):
@@ -366,7 +355,6 @@ class TestAsyncHandleRemove:
         with pytest.raises(HomeAssistantError, match="No matching"):
             await async_handle_remove(hass, call)
 
-    @pytest.mark.asyncio
     async def test_remove_with_delete_files_false(
         self, hass: HomeAssistant, mock_entry_1
     ):
@@ -481,7 +469,6 @@ class TestFindEntryByCriteriaEdgeCases:
 class TestAsyncHandleListEdgeCases:
     """Edge case tests for async_handle_list."""
 
-    @pytest.mark.asyncio
     async def test_list_with_invalid_url_in_entry(self, hass: HomeAssistant):
         """Test list handles entries with invalid URLs gracefully."""
         # Create entry with invalid URL

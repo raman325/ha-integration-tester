@@ -52,7 +52,6 @@ def mock_config_entry(hass: HomeAssistant):
 class TestCoordinator:
     """Tests for IntegrationTesterCoordinator."""
 
-    @pytest.mark.asyncio
     async def test_fetch_pr_data(
         self,
         hass: HomeAssistant,
@@ -93,7 +92,6 @@ class TestCoordinator:
             assert coordinator.data[DATA_COMMIT_HASH] == "new_commit_sha"
             mock_pr_closed.assert_not_called()
 
-    @pytest.mark.asyncio
     async def test_update_available(
         self,
         hass: HomeAssistant,
@@ -127,7 +125,6 @@ class TestCoordinator:
             # Installed commit is "abc123", current is "new_commit_sha"
             assert coordinator.update_available is True
 
-    @pytest.mark.asyncio
     async def test_no_update_when_same_commit(
         self,
         hass: HomeAssistant,
@@ -160,7 +157,6 @@ class TestCoordinator:
 
             assert coordinator.update_available is False
 
-    @pytest.mark.asyncio
     async def test_pr_merged_triggers_notification(
         self,
         hass: HomeAssistant,
@@ -205,7 +201,6 @@ class TestCoordinator:
             mock_create_issue.assert_called_once()
             assert coordinator.data[DATA_PR_STATE] == PRState.MERGED.value
 
-    @pytest.mark.asyncio
     async def test_fetch_branch_data(
         self,
         hass: HomeAssistant,
@@ -252,7 +247,6 @@ class TestCoordinator:
                 == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
             )
 
-    @pytest.mark.asyncio
     async def test_fetch_commit_data(
         self,
         hass: HomeAssistant,
@@ -298,7 +292,6 @@ class TestCoordinator:
             # Commit references don't have updates
             assert coordinator.update_available is False
 
-    @pytest.mark.asyncio
     async def test_core_pr_integration_removed(
         self,
         hass: HomeAssistant,
