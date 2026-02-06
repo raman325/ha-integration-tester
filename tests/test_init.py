@@ -202,6 +202,7 @@ class TestRemoval:
                 CONF_REFERENCE_TYPE: ReferenceType.PR.value,
                 CONF_REFERENCE_VALUE: "123",
                 CONF_INTEGRATION_DOMAIN: "zwave_js",
+                CONF_IS_PART_OF_HA_CORE: True,
             },
             unique_id="zwave_js",
         )
