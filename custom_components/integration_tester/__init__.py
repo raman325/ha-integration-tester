@@ -125,7 +125,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             # Check if restart was requested (set by config flow in entry options)
             should_restart = entry.options.get("restart_after_install", False)
-            # Clear the flag from options to avoid triggering on reload
+            # Clear the flag BEFORE restart attempt to prevent infinite restart loops.
+            # If restart fails, we fall back to creating a repair issue instead of
+            # retrying the restart on next setup (which could cause boot loops).
             if should_restart:
                 hass.config_entries.async_update_entry(
                     entry,

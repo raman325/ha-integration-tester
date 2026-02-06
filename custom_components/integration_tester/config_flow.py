@@ -141,7 +141,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                         return self.async_abort(reason="multiple_integrations_found")
                     self._selected_domain = integrations[0]
                 else:
-                    return self.async_abort(reason="core_requires_pr")
+                    return self.async_abort(reason="import_core_requires_pr")
             else:
                 # External repo
                 self._integration_info = await validate_custom_integration(

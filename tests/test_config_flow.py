@@ -109,6 +109,46 @@ class TestConfigFlow:
         assert result["data"][CONF_REFERENCE_TYPE] == ReferenceType.PR.value
         assert result["data"][CONF_REFERENCE_VALUE] == "1"
 
+    async def test_form_with_restart_option(self, hass: HomeAssistant):
+        """Test user flow with restart=True stores option in entry."""
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+            mock_api.validate_token = AsyncMock(return_value=True)
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference()
+            )
+            mock_api.file_exists = AsyncMock(return_value=True)
+            mock_api.get_directory_contents = AsyncMock(
+                return_value=[{"name": "lock_code_manager", "type": "dir"}]
+            )
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "lock_code_manager", "name": "Lock Code Manager"}'
+            )
+
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": config_entries.SOURCE_USER}
+            )
+
+            with patch(
+                "custom_components.integration_tester.helpers.integration_exists",
+                return_value=False,
+            ):
+                result = await hass.config_entries.flow.async_configure(
+                    result["flow_id"],
+                    {
+                        "url": "https://github.com/raman325/lock_code_manager/pull/1",
+                        "github_token": "test_token",
+                        "restart": True,
+                    },
+                )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        # Verify restart option is stored in entry options
+        assert result["options"].get("restart_after_install") is True
+
     async def test_form_invalid_url(self, hass: HomeAssistant):
         """Test config flow with invalid URL."""
         with patch(
@@ -718,6 +758,59 @@ class TestImportFlow:
         # Should abort - multi-integration core PRs require UI selection
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "multiple_integrations_found"
+
+    async def test_import_with_overwrite_existing_entry(self, hass: HomeAssistant):
+        """Test import with overwrite=True removes existing entry."""
+        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
+
+        # Create existing entry for same domain
+        existing_entry = create_config_entry(
+            hass,
+            domain=DOMAIN,
+            title="Existing Entry",
+            data={
+                CONF_URL: "https://github.com/old_owner/old_repo/pull/1",
+                CONF_REFERENCE_TYPE: ReferenceType.PR.value,
+                CONF_REFERENCE_VALUE: "1",
+                CONF_INTEGRATION_DOMAIN: "lock_code_manager",
+            },
+            unique_id="lock_code_manager",
+        )
+        existing_entry.add_to_hass(hass)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference()
+            )
+            mock_api.file_exists = AsyncMock(return_value=True)
+            mock_api.get_directory_contents = AsyncMock(
+                return_value=[{"name": "lock_code_manager", "type": "dir"}]
+            )
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "lock_code_manager", "name": "Lock Code Manager"}'
+            )
+
+            with patch(
+                "custom_components.integration_tester.helpers.integration_exists",
+                return_value=False,
+            ):
+                result = await hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "import"},
+                    data={
+                        "url": "https://github.com/raman325/lock_code_manager/pull/1",
+                        "overwrite": True,
+                    },
+                )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        # Verify new entry was created with new URL
+        assert "Lock Code Manager" in result["title"]
 
 
 class TestOptionsFlow:
