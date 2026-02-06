@@ -36,9 +36,11 @@
       "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/."
     },
     "abort": {
-      "already_configured_same_repo": "This integration is already tracked from this repository by Integration Tester. Delete the existing Integration Tester entry to switch references.",
-      "already_configured_different_repo": "This integration domain is already tracked from a different repository by Integration Tester. Delete the existing Integration Tester entry first.",
-      "user_cancelled": "Setup cancelled."
+      "user_cancelled": "Setup cancelled.",
+      "multiple_integrations_found": "This PR modifies multiple integrations. Please use the UI to select which integration to install.",
+      "missing_url": "No URL was provided.",
+      "no_token": "No GitHub token is configured. Please set up via the UI first.",
+      "import_core_requires_pr": "Cannot install from Home Assistant core repository without a PR. Use a pull request URL to specify which integration to extract."
     }
   },
   "options": {

@@ -235,8 +235,10 @@ async def async_handle_remove(hass: HomeAssistant, call: ServiceCall) -> None:
     if not entry:
         raise HomeAssistantError("No matching config entry found")
 
-    # Store flag to indicate whether async_remove_entry should delete files
-    # This is checked by async_remove_entry in __init__.py
+    # Store flag to indicate whether async_remove_entry should delete files.
+    # This is checked by async_remove_entry in __init__.py.
+    # Note: Concurrent removes for the same entry are safe - the second call
+    # would fail at _find_entry_by_criteria since the entry no longer exists.
     hass.data.setdefault(DOMAIN, {})
     flag_key = f"skip_file_deletion_{entry.entry_id}"
     hass.data[DOMAIN][flag_key] = not delete_files

@@ -39,7 +39,7 @@ from .repairs import (
     remove_pr_closed_issue,
     remove_restart_required_issue,
 )
-from .services import SERVICE_ADD, async_register_services
+from .services import SERVICE_ADD, SERVICE_LIST, SERVICE_REMOVE, async_register_services
 from .storage import async_load_token
 
 # Constants for homeassistant.restart service call
@@ -59,8 +59,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if token_from_storage := await async_load_token(hass):
         hass.data[DOMAIN][CONF_GITHUB_TOKEN] = token_from_storage
 
-    # Register services (guard against double registration on reload)
-    if not hass.services.has_service(DOMAIN, SERVICE_ADD):
+    # Register services (guard against double registration on reload).
+    # Services are registered at integration level and persist until HA restarts.
+    # We don't unregister on last entry removal because the integration remains
+    # loaded and services should stay available for adding new entries.
+    if not (
+        hass.services.has_service(DOMAIN, SERVICE_ADD)
+        and hass.services.has_service(DOMAIN, SERVICE_LIST)
+        and hass.services.has_service(DOMAIN, SERVICE_REMOVE)
+    ):
         async_register_services(hass)
 
     return True
@@ -139,21 +146,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
 
             if should_restart:
-                # Trigger restart instead of showing issue
+                # Trigger restart and return immediately - no point setting up
+                # coordinator/platforms since HA is about to restart anyway.
                 _LOGGER.info("Restarting Home Assistant as requested for %s", domain)
-                try:
-                    await hass.services.async_call(
-                        HA_DOMAIN, SERVICE_RESTART, blocking=True
-                    )
-                except Exception as err:
-                    _LOGGER.error(
-                        "Failed to restart Home Assistant for %s: %s", domain, err
-                    )
-                    # Fall back to creating a restart required issue
-                    create_restart_required_issue(hass, entry, domain)
-            else:
-                # Create restart required issue
-                create_restart_required_issue(hass, entry, domain)
+                await hass.services.async_call(HA_DOMAIN, SERVICE_RESTART)
+                return True
+
+            # Create restart required issue
+            create_restart_required_issue(hass, entry, domain)
 
         except Exception as err:
             _LOGGER.error("Failed to download integration %s: %s", domain, err)
