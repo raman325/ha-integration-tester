@@ -157,7 +157,7 @@ class TestSetup:
         tmp_path: Path,
     ):
         """Test setup with restart flag triggers restart instead of issue."""
-        # Create entry without CONF_INSTALLED_COMMIT
+        # Create entry without CONF_INSTALLED_COMMIT but with restart option
         entry = create_config_entry(
             hass,
             domain=DOMAIN,
@@ -170,12 +170,9 @@ class TestSetup:
                 CONF_IS_PART_OF_HA_CORE: False,
             },
             unique_id="test_restart",
+            options={"restart_after_install": True},  # Restart flag via entry options
         )
         entry.add_to_hass(hass)
-
-        # Set the restart flag (as the add service would)
-        hass.data.setdefault(DOMAIN, {})
-        hass.data[DOMAIN]["restart_after_install_test_restart"] = True
 
         # Create custom_components directory
         custom_components = tmp_path / "custom_components"

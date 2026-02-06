@@ -137,9 +137,8 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                     if not integrations:
                         return self.async_abort(reason="no_integrations_found")
                     if len(integrations) > 1:
-                        # Multiple integrations require user selection
-                        self._available_integrations = integrations
-                        return await self.async_step_select_integration()
+                        # Multiple integrations - can't complete via import/service
+                        return self.async_abort(reason="multiple_integrations_found")
                     self._selected_domain = integrations[0]
                 else:
                     return self.async_abort(reason="core_requires_pr")
@@ -472,15 +471,12 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_IS_PART_OF_HA_CORE: self._resolved.is_part_of_ha_core,
         }
 
-        # Pass restart flag via hass.data for async_setup_entry to pick up
-        # The entry_id won't be known until after create, so we store by domain
-        if self._restart_after_install and self._selected_domain:
-            self.hass.data.setdefault(DOMAIN, {})
-            self.hass.data[DOMAIN][f"restart_after_install_{self._selected_domain}"] = (
-                True
-            )
+        # Store restart flag in entry options (avoids race condition with domain-keyed state)
+        options = {}
+        if self._restart_after_install:
+            options["restart_after_install"] = True
 
-        return self.async_create_entry(title=title, data=data)
+        return self.async_create_entry(title=title, data=data, options=options)
 
     def _get_current_ref(self) -> str:
         """Get the current commit SHA."""

@@ -123,9 +123,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 data={**entry.data, CONF_INSTALLED_COMMIT: commit_sha},
             )
 
-            # Check if restart was requested (set by config flow)
-            restart_key = f"restart_after_install_{domain}"
-            should_restart = hass.data.get(DOMAIN, {}).pop(restart_key, False)
+            # Check if restart was requested (set by config flow in entry options)
+            should_restart = entry.options.get("restart_after_install", False)
+            # Clear the flag from options to avoid triggering on reload
+            if should_restart:
+                hass.config_entries.async_update_entry(
+                    entry,
+                    options={
+                        k: v
+                        for k, v in entry.options.items()
+                        if k != "restart_after_install"
+                    },
+                )
 
             if should_restart:
                 # Trigger restart instead of showing issue

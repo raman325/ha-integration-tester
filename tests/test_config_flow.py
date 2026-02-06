@@ -703,7 +703,7 @@ class TestImportFlow:
 
     @pytest.mark.asyncio
     async def test_import_core_pr_multiple_integrations(self, hass: HomeAssistant):
-        """Test import flow shows selection for core PR with multiple integrations."""
+        """Test import flow aborts for core PR with multiple integrations."""
         hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
 
         with patch(
@@ -733,9 +733,9 @@ class TestImportFlow:
                 data={"url": "https://github.com/home-assistant/core/pull/134000"},
             )
 
-        # Should show selection form instead of aborting
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "select_integration"
+        # Should abort - multi-integration core PRs require UI selection
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "multiple_integrations_found"
 
 
 class TestOptionsFlow:

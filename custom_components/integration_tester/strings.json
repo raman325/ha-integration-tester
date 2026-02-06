@@ -47,7 +47,8 @@
     "abort": {
       "already_configured_same_repo": "This integration is already tracked from this repository by Integration Tester. Delete the existing Integration Tester entry to switch references.",
       "already_configured_different_repo": "This integration domain is already tracked from a different repository by Integration Tester. Delete the existing Integration Tester entry first.",
-      "user_cancelled": "Setup cancelled."
+      "user_cancelled": "Setup cancelled.",
+      "multiple_integrations_found": "This PR modifies multiple integrations. Please use the UI to select which integration to install."
     }
   },
   "options": {
