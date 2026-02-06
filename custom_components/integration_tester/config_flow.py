@@ -22,7 +22,7 @@ from .const import (
     CONF_GITHUB_TOKEN,
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
-    CONF_IS_CORE_OR_FORK,
+    CONF_IS_PART_OF_HA_CORE,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
@@ -43,12 +43,32 @@ from .helpers import (
     validate_custom_integration,
 )
 from .models import IntegrationInfo, ResolvedReference
+from .storage import async_save_token
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Integration Tester."""
+    """
+    Handle a config flow for Integration Tester.
+
+    The flow differs for core vs external repositories:
+
+    External repos (HACS-style custom integrations):
+      1. Validate repo structure has custom_components/<domain>/manifest.json
+      2. Extract domain and integration info from manifest
+      3. Check for conflicts, create entry
+
+    Core repos (home-assistant/core or forks):
+      1. Get list of integrations modified in the PR diff
+      2. User selects integration (or auto-select if only one)
+      3. Check for conflicts, create entry
+      4. Fetch integration info from manifest at entry creation time
+
+    The key difference: external repos need early validation (structure might not
+    exist), while core repos skip validation (we know the integration exists from
+    the PR diff). Integration info is fetched at different times accordingly.
+    """
 
     VERSION = 1
 
@@ -56,7 +76,9 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._api: IntegrationTesterGitHubAPI | None = None
         self._resolved: ResolvedReference | None = None
+        # Integration info is set early for external repos, late for core repos
         self._integration_info: IntegrationInfo | None = None
+        # For core PRs that modify multiple integrations
         self._available_integrations: list[str] = []
         self._selected_domain: str | None = None
 
@@ -75,38 +97,35 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             session = async_get_clientsession(self.hass)
-            token = user_input.get(CONF_GITHUB_TOKEN)
 
-            # Validate token if provided
-            if token:
+            # Only validate token if it was provided in the form (not already stored)
+            if CONF_GITHUB_TOKEN in user_input:
+                token = user_input[CONF_GITHUB_TOKEN]
                 try:
                     test_api = IntegrationTesterGitHubAPI(session, token)
                     if not await test_api.validate_token():
                         errors[CONF_GITHUB_TOKEN] = "invalid_token"
-                        return self.async_show_form(
-                            step_id="user",
-                            data_schema=self._get_user_schema(),
-                            errors=errors,
-                        )
-                    # Token is valid, store it
-                    self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
                 except GitHubAuthError:
                     errors[CONF_GITHUB_TOKEN] = "invalid_token"
-                    return self.async_show_form(
-                        step_id="user",
-                        data_schema=self._get_user_schema(),
-                        errors=errors,
-                    )
                 except GitHubAPIError as err:
                     _LOGGER.error("GitHub API error validating token: %s", err)
-                    errors[CONF_GITHUB_TOKEN] = "github_error"
+                    errors["base"] = "github_error"
+                    description_placeholders["error"] = str(err)
+                else:
+                    # Token is valid, store it in memory and persist to storage
+                    self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
+                    await async_save_token(self.hass, token)
+
+                if errors:
                     return self.async_show_form(
                         step_id="user",
                         data_schema=self._get_user_schema(),
                         errors=errors,
+                        description_placeholders=description_placeholders,
                     )
 
             try:
@@ -127,15 +146,20 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Resolve the reference to get commit SHA and all context
                 self._resolved = await self._api.resolve_reference(parsed_url)
 
-                # Handle core vs external repos differently
-                if self._resolved.is_core_or_fork_repo:
-                    return await self._handle_core_repo(self._resolved.commit_sha)
-                else:
-                    return await self._handle_external_repo(self._resolved.commit_sha)
+                # Core and external repos have different flows (see class docstring)
+                if self._resolved.is_part_of_ha_core:
+                    return await self._select_core_integration()
+                return await self._validate_external_integration()
 
             except GitHubAPIError as err:
                 _LOGGER.error("GitHub API error: %s", err)
-                errors["url"] = "github_error"
+                errors["base"] = "github_error"
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self._get_user_schema(),
+                    errors=errors,
+                    description_placeholders={"error": str(err)},
+                )
 
         return self.async_show_form(
             step_id="user",
@@ -143,9 +167,18 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def _handle_core_repo(self, ref: str) -> ConfigFlowResult:
-        """Handle core repository URL."""
-        # Get integrations modified in this PR/branch/commit
+    async def _select_core_integration(self) -> ConfigFlowResult:
+        """
+        Identify and select integration from a core repository PR.
+
+        For core repos, we determine which integration to install by examining
+        which files are modified in the PR. No validation is needed since we
+        know the integration exists in the core codebase.
+
+        Sets _selected_domain directly if only one integration is modified,
+        otherwise prompts user to select from available integrations.
+        """
+        # Get integrations modified in this PR
         if self._resolved.reference_type == ReferenceType.PR:
             self._available_integrations = await self._api.get_core_pr_integrations(
                 self._resolved.owner,
@@ -177,14 +210,24 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         # Multiple integrations, let user select
         return await self.async_step_select_integration()
 
-    async def _handle_external_repo(self, ref: str) -> ConfigFlowResult:
-        """Handle external repository URL."""
+    async def _validate_external_integration(self) -> ConfigFlowResult:
+        """
+        Validate and extract info from an external (HACS-style) repository.
+
+        External repos must have the structure custom_components/<domain>/manifest.json.
+        We validate this early because the structure might not exist, unlike core repos
+        where we already know the integration exists from the PR diff.
+
+        Sets both _selected_domain and _integration_info since we're reading the
+        manifest anyway.
+        """
         try:
+            # Validates structure exists AND extracts integration info
             self._integration_info = await validate_custom_integration(
                 self._api,
                 self._resolved.owner,
                 self._resolved.repo,
-                ref,
+                self._resolved.commit_sha,
             )
             self._selected_domain = self._integration_info.domain
             return await self._check_existing_integration()
@@ -218,7 +261,14 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def _check_existing_integration(self) -> ConfigFlowResult:
-        """Check if integration already exists and handle conflicts."""
+        """
+        Check for conflicts with existing integrations.
+
+        Handles three cases:
+        1. Already tracked by Integration Tester from same repo → abort
+        2. Already tracked by Integration Tester from different repo → abort
+        3. Folder exists but not managed by us → confirm overwrite
+        """
         await self.async_set_unique_id(self._selected_domain)
 
         # Check for existing Integration Tester entry with same unique ID
@@ -260,9 +310,18 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def _create_entry(self) -> ConfigFlowResult:
-        """Create the config entry."""
-        # Get integration info if not already set
-        if self._integration_info is None and self._resolved.is_core_or_fork_repo:
+        """
+        Create the config entry.
+
+        For core repos, this is where we fetch the integration info (name from
+        manifest). We defer this until entry creation because:
+        1. We don't need it for validation (unlike external repos)
+        2. For multi-integration PRs, we don't know the domain until user selects
+
+        For external repos, _integration_info is already set from validation.
+        """
+        # Fetch integration info for core repos (external repos already have it)
+        if self._integration_info is None and self._resolved.is_part_of_ha_core:
             ref = self._get_current_ref()
             self._integration_info = await get_core_integration_info(
                 self._api,
@@ -296,7 +355,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_REFERENCE_VALUE: self._resolved.reference_value,
             CONF_INTEGRATION_DOMAIN: self._selected_domain,
             CONF_INSTALLED_COMMIT: self._get_current_ref(),
-            CONF_IS_CORE_OR_FORK: self._resolved.is_core_or_fork_repo,
+            CONF_IS_PART_OF_HA_CORE: self._resolved.is_part_of_ha_core,
         }
 
         return self.async_create_entry(title=title, data=data)
@@ -328,40 +387,44 @@ class IntegrationTesterOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Handle options flow."""
         errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {
+            "domain": self._config_entry.data.get(CONF_INTEGRATION_DOMAIN, "")
+        }
+
+        # Default to current stored token for initial form display
+        token = self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN, "")
 
         if user_input is not None:
+            # If we display form after it has been filled, it's due to an error and we
+            # want to preserve the entered token value
             token = user_input[CONF_GITHUB_TOKEN]
 
             # Validate the new token
             session = async_get_clientsession(self.hass)
+            api = IntegrationTesterGitHubAPI(session, token)
             try:
-                test_api = IntegrationTesterGitHubAPI(session, token)
-                if not await test_api.validate_token():
-                    errors[CONF_GITHUB_TOKEN] = "invalid_token"
-                else:
-                    # Token is valid, store it
-                    self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
-                    return self.async_create_entry(title="", data=user_input)
+                valid_token = await api.validate_token()
             except GitHubAuthError:
                 errors[CONF_GITHUB_TOKEN] = "invalid_token"
             except GitHubAPIError as err:
                 _LOGGER.error("GitHub API error validating token: %s", err)
-                errors[CONF_GITHUB_TOKEN] = "github_error"
+                errors["base"] = "github_error"
+                description_placeholders["error"] = str(err)
+            else:
+                if not valid_token:
+                    errors[CONF_GITHUB_TOKEN] = "invalid_token"
+                else:
+                    # Token is valid, store it in memory and persist to storage
+                    self.hass.data.setdefault(DOMAIN, {})[CONF_GITHUB_TOKEN] = token
+                    await async_save_token(self.hass, token)
+                    return self.async_create_entry(title="", data={})
 
-        current_token = self.hass.data.get(DOMAIN, {}).get(CONF_GITHUB_TOKEN, "")
-
+        desc = {"suggested_value": token} if token else vol.UNDEFINED
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_GITHUB_TOKEN,
-                        description={"suggested_value": current_token},
-                    ): cv.string,
-                }
+                {vol.Required(CONF_GITHUB_TOKEN, description=desc): cv.string}
             ),
             errors=errors,
-            description_placeholders={
-                "domain": self._config_entry.data.get(CONF_INTEGRATION_DOMAIN, ""),
-            },
+            description_placeholders=description_placeholders,
         )

@@ -253,14 +253,14 @@ class TestGetDefaultBranch:
 
 
 class TestIsCoreOrFork:
-    """Tests for is_core_or_fork."""
+    """Tests for is_part_of_ha_core."""
 
     @pytest.mark.asyncio
     async def test_is_core_direct_match(self, api_and_client):
         """Test direct match of home-assistant/core."""
         api, _ = api_and_client
         # No API call needed for direct match
-        result = await api.is_core_or_fork("home-assistant", "core")
+        result = await api.is_part_of_ha_core("home-assistant", "core")
         assert result is True
 
     @pytest.mark.asyncio
@@ -273,7 +273,7 @@ class TestIsCoreOrFork:
         mock_repo.data.parent.full_name = "home-assistant/core"
         mock_client.repos.get = AsyncMock(return_value=mock_repo)
 
-        result = await api.is_core_or_fork("user", "my-fork")
+        result = await api.is_part_of_ha_core("user", "my-fork")
 
         assert result is True
 
@@ -285,12 +285,12 @@ class TestIsCoreOrFork:
         mock_repo.data.fork = False
         mock_client.repos.get = AsyncMock(return_value=mock_repo)
 
-        result = await api.is_core_or_fork("user", "custom-integration")
+        result = await api.is_part_of_ha_core("user", "custom-integration")
 
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_is_core_or_fork_rate_limit(self, api_and_client):
+    async def test_is_part_of_ha_core_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
         mock_client.repos.get = AsyncMock(
@@ -298,7 +298,7 @@ class TestIsCoreOrFork:
         )
 
         with pytest.raises(GitHubRateLimitError):
-            await api.is_core_or_fork("user", "repo")
+            await api.is_part_of_ha_core("user", "repo")
 
 
 class TestGetPRFiles:
@@ -426,10 +426,10 @@ class TestResolveReference:
             repo="lock_code_manager",
             reference_type=ReferenceType.PR,
             reference_value="1",
-            is_core_or_fork_repo=False,
+            is_part_of_ha_core=False,
         )
 
-        # Mock is_core_or_fork to return False (not a core repo)
+        # Mock is_part_of_ha_core to return False (not a core repo)
         mock_repo = MagicMock()
         mock_repo.data.fork = False
         mock_client.repos.get = AsyncMock(return_value=mock_repo)
@@ -452,7 +452,7 @@ class TestResolveReference:
             repo="lock_code_manager",
             reference_type=ReferenceType.BRANCH,
             reference_value="main",
-            is_core_or_fork_repo=False,
+            is_part_of_ha_core=False,
         )
 
         mock_repo = MagicMock()
@@ -479,10 +479,10 @@ class TestResolveReference:
             repo="repo",
             reference_type=ReferenceType.BRANCH,
             reference_value=None,  # Default branch
-            is_core_or_fork_repo=False,
+            is_part_of_ha_core=False,
         )
 
-        # Mock for is_core_or_fork and get_default_branch
+        # Mock for is_part_of_ha_core and get_default_branch
         mock_repo = MagicMock()
         mock_repo.data.fork = False
         mock_repo.data.default_branch = "main"
@@ -506,7 +506,7 @@ class TestResolveReference:
             repo="lock_code_manager",
             reference_type=ReferenceType.COMMIT,
             reference_value="dbfc180",
-            is_core_or_fork_repo=False,
+            is_part_of_ha_core=False,
         )
 
         mock_repo = MagicMock()

@@ -21,18 +21,21 @@ from .const import (
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     DATA_BRANCH_NAME,
+    DATA_BRANCH_URL,
     DATA_COMMIT_AUTHOR,
     DATA_COMMIT_DATE,
+    DATA_COMMIT_HASH,
     DATA_COMMIT_MESSAGE,
     DATA_COMMIT_URL,
-    DATA_CURRENT_COMMIT,
-    DATA_IS_CORE_OR_FORK,
+    DATA_INTEGRATION_DOMAIN,
+    DATA_IS_PART_OF_HA_CORE,
     DATA_LAST_PUSH,
     DATA_PR_AUTHOR,
     DATA_PR_NUMBER,
     DATA_PR_STATE,
     DATA_PR_TITLE,
     DATA_PR_URL,
+    DATA_REFERENCE_TYPE,
     DATA_REPO_URL,
     DATA_SOURCE_BRANCH,
     DATA_SOURCE_REPO_URL,
@@ -117,7 +120,7 @@ class CommitSensor(IntegrationTesterSensorBase):
         """Return the short commit hash."""
         if not self.coordinator.data:
             return None
-        full_hash = self.coordinator.data.get(DATA_CURRENT_COMMIT, "")
+        full_hash = self.coordinator.data.get(DATA_COMMIT_HASH, "")
         return full_hash[:7] if full_hash else None
 
     @property
@@ -131,37 +134,38 @@ class CommitSensor(IntegrationTesterSensorBase):
         ref_type = ReferenceType(entry_data[CONF_REFERENCE_TYPE])
 
         attrs: dict[str, Any] = {
-            "full_commit_hash": data.get(DATA_CURRENT_COMMIT, ""),
-            "commit_url": data.get(DATA_COMMIT_URL, ""),
-            "commit_message": data.get(DATA_COMMIT_MESSAGE, ""),
-            "commit_author": data.get(DATA_COMMIT_AUTHOR, ""),
-            "commit_date": data.get(DATA_COMMIT_DATE, ""),
-            "repo_url": data.get(DATA_REPO_URL, ""),
-            "reference_type": ref_type.value,
-            "integration_domain": entry_data[CONF_INTEGRATION_DOMAIN],
-            "is_core_integration": data.get(DATA_IS_CORE_OR_FORK, False),
+            DATA_COMMIT_HASH: data.get(DATA_COMMIT_HASH, ""),
+            DATA_COMMIT_URL: data.get(DATA_COMMIT_URL, ""),
+            DATA_COMMIT_MESSAGE: data.get(DATA_COMMIT_MESSAGE, ""),
+            DATA_COMMIT_AUTHOR: data.get(DATA_COMMIT_AUTHOR, ""),
+            DATA_COMMIT_DATE: data.get(DATA_COMMIT_DATE, ""),
+            DATA_REPO_URL: data.get(DATA_REPO_URL, ""),
+            DATA_REFERENCE_TYPE: ref_type.value,
+            DATA_INTEGRATION_DOMAIN: entry_data[CONF_INTEGRATION_DOMAIN],
+            DATA_IS_PART_OF_HA_CORE: data.get(DATA_IS_PART_OF_HA_CORE, False),
         }
 
         # Add branch-specific attributes
         if ref_type == ReferenceType.BRANCH:
-            attrs["branch_name"] = data.get(
+            attrs[DATA_BRANCH_NAME] = data.get(
                 DATA_BRANCH_NAME, entry_data.get(CONF_REFERENCE_VALUE, "")
             )
+            attrs[DATA_BRANCH_URL] = data.get(DATA_BRANCH_URL, "")
 
         # Add PR-specific attributes
         if ref_type == ReferenceType.PR:
             attrs.update(
                 {
-                    "pr_number": data.get(
+                    DATA_PR_NUMBER: data.get(
                         DATA_PR_NUMBER, entry_data.get(CONF_REFERENCE_VALUE)
                     ),
-                    "pr_url": data.get(DATA_PR_URL, ""),
-                    "pr_title": data.get(DATA_PR_TITLE, ""),
-                    "pr_author": data.get(DATA_PR_AUTHOR, ""),
-                    "pr_state": data.get(DATA_PR_STATE, ""),
-                    "source_repo_url": data.get(DATA_SOURCE_REPO_URL, ""),
-                    "source_branch": data.get(DATA_SOURCE_BRANCH, ""),
-                    "target_branch": data.get(DATA_TARGET_BRANCH, ""),
+                    DATA_PR_URL: data.get(DATA_PR_URL, ""),
+                    DATA_PR_TITLE: data.get(DATA_PR_TITLE, ""),
+                    DATA_PR_AUTHOR: data.get(DATA_PR_AUTHOR, ""),
+                    DATA_PR_STATE: data.get(DATA_PR_STATE, ""),
+                    DATA_SOURCE_REPO_URL: data.get(DATA_SOURCE_REPO_URL, ""),
+                    DATA_SOURCE_BRANCH: data.get(DATA_SOURCE_BRANCH, ""),
+                    DATA_TARGET_BRANCH: data.get(DATA_TARGET_BRANCH, ""),
                 }
             )
 

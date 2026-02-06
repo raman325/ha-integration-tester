@@ -14,7 +14,7 @@ from custom_components.integration_tester import async_remove_entry
 from custom_components.integration_tester.const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
-    CONF_IS_CORE_OR_FORK,
+    CONF_IS_PART_OF_HA_CORE,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
@@ -92,7 +92,7 @@ class TestSetup:
                 CONF_REFERENCE_TYPE: ReferenceType.PR.value,
                 CONF_REFERENCE_VALUE: "1",
                 CONF_INTEGRATION_DOMAIN: "test_domain",
-                CONF_IS_CORE_OR_FORK: False,
+                CONF_IS_PART_OF_HA_CORE: False,
                 # No CONF_INSTALLED_COMMIT - triggers fresh install
             },
             unique_id="test_domain_fresh",
@@ -202,6 +202,7 @@ class TestRemoval:
                 CONF_REFERENCE_TYPE: ReferenceType.PR.value,
                 CONF_REFERENCE_VALUE: "123",
                 CONF_INTEGRATION_DOMAIN: "zwave_js",
+                CONF_IS_PART_OF_HA_CORE: True,
             },
             unique_id="zwave_js",
         )
