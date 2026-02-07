@@ -224,7 +224,9 @@ class TestSetup:
                 result = await hass.config_entries.async_setup(entry.entry_id)
 
         assert result is True
-        # Verify restart was called instead of issue
+        # Verify restart was called instead of issue.
+        # Note: Even though async_call uses blocking=False, the mock service handler
+        # runs in the same event loop and completes before we reach this assertion.
         assert len(restart_called) == 1
         mock_restart_issue.assert_not_called()
         # Verify restart_after_install flag was cleared to prevent restart loops
