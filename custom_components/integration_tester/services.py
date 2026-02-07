@@ -217,7 +217,7 @@ async def async_handle_list(hass: HomeAssistant, call: ServiceCall) -> ServiceRe
         try:
             parsed = parse_github_url(entry_url)
             owner_repo = f"{parsed.owner}/{parsed.repo}"
-        except Exception as exc:
+        except InvalidGitHubURLError as exc:
             _LOGGER.debug(
                 "Failed to parse URL '%s' for entry '%s': %s",
                 entry_url,

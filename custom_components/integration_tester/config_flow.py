@@ -338,10 +338,12 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
 
         Handles three cases:
         1. Already tracked by Integration Tester → confirm overwrite (auto-remove if overwrite=True)
+           For import flows without overwrite, abort with clear error.
         2. Folder exists with our marker (switching reference) → proceed
-        3. Folder exists but not managed by us → confirm overwrite
+        3. Folder exists but not managed by us → confirm overwrite (abort for import flows)
         """
         await self.async_set_unique_id(self._selected_domain)
+        is_import = self.context.get("source") == "import"
 
         # Check for existing Integration Tester entry with same unique ID
         for entry in self.hass.config_entries.async_entries(DOMAIN):
@@ -350,7 +352,16 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                 if self._overwrite_existing:
                     self._existing_entry_to_remove = entry
                     return await self._remove_existing_and_create()
-                # Otherwise, show confirmation step (for UI flow)
+                # For import flows, abort with clear error instead of form
+                if is_import:
+                    return self.async_abort(
+                        reason="already_configured",
+                        description_placeholders={
+                            "domain": self._selected_domain,
+                            "existing_url": entry.data.get(CONF_URL, ""),
+                        },
+                    )
+                # For UI flows, show confirmation step
                 self._existing_entry_to_remove = entry
                 return await self.async_step_confirm_entry_overwrite()
 
@@ -359,9 +370,14 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             if integration_has_marker(self.hass, self._selected_domain):
                 # We manage it, can proceed (switching reference)
                 return await self._create_entry()
-            else:
-                # Not managed by us, show confirmation
-                return await self.async_step_confirm_overwrite()
+            # For import flows, abort with clear error
+            if is_import:
+                return self.async_abort(
+                    reason="folder_exists",
+                    description_placeholders={"domain": self._selected_domain},
+                )
+            # For UI flows, show confirmation
+            return await self.async_step_confirm_overwrite()
 
         return await self._create_entry()
 

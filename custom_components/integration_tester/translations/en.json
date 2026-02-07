@@ -48,12 +48,14 @@
       "user_cancelled": "Setup cancelled.",
       "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
       "github_error": "GitHub API error: {error}",
-      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/[domain]/manifest.json",
+      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/&lt;domain&gt;/manifest.json",
       "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/.",
       "multiple_integrations_found": "This PR modifies multiple integrations. Please use the UI to select which integration to install.",
       "missing_url": "No URL was provided.",
       "no_token": "No GitHub token is configured. Please set up via the UI first.",
-      "import_core_requires_pr": "Cannot install from Home Assistant core repository without a PR. Use a pull request URL to specify which integration to extract."
+      "import_core_requires_pr": "Cannot install from Home Assistant core repository without a PR. Use a pull request URL to specify which integration to extract.",
+      "already_configured": "Integration `{domain}` is already tracked by Integration Tester from `{existing_url}`. Use overwrite=true to replace it.",
+      "folder_exists": "The folder `custom_components/{domain}` already exists but is not managed by Integration Tester. Use the UI to confirm overwrite or remove the folder manually."
     }
   },
   "options": {
