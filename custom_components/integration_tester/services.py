@@ -82,6 +82,7 @@ def _find_entry_by_criteria(
     """Find a config entry matching the given criteria.
 
     Only one criteria should be provided (enforced by vol.Exclusive in schema).
+    Raises HomeAssistantError if multiple entries match (ambiguous criteria).
     """
     entries = _get_integration_tester_entries(hass)
 
@@ -106,6 +107,7 @@ def _find_entry_by_criteria(
         except Exception:
             return None
 
+        matches: list[ConfigEntry] = []
         for entry in entries:
             entry_url = entry.data.get(CONF_URL, "")
             try:
@@ -122,23 +124,25 @@ def _find_entry_by_criteria(
                             entry_ref_type == target_ref_type.value
                             and entry_ref_value == target_ref_value
                         ):
-                            return entry
+                            matches.append(entry)
                     else:
                         # No specific ref, match on owner/repo only
-                        return entry
+                        matches.append(entry)
             except Exception:
                 continue
-        return None
+
+        return _check_unique_match(matches, "url")
 
     if owner_repo:
         # owner_repo format: "owner/repo"
+        matches = []
         for entry in entries:
             entry_url = entry.data.get(CONF_URL, "")
             try:
                 entry_parsed = parse_github_url(entry_url)
                 entry_owner_repo = f"{entry_parsed.owner}/{entry_parsed.repo}"
                 if entry_owner_repo == owner_repo:
-                    return entry
+                    matches.append(entry)
             except Exception as exc:
                 _LOGGER.debug(
                     "Failed to parse URL '%s' for entry '%s': %s",
@@ -147,9 +151,26 @@ def _find_entry_by_criteria(
                     exc,
                 )
                 continue
-        return None
+
+        return _check_unique_match(matches, "owner_repo")
 
     return None
+
+
+def _check_unique_match(
+    matches: list[ConfigEntry], criteria_name: str
+) -> ConfigEntry | None:
+    """Check that matches are unique and return the entry or raise an error."""
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    # Multiple matches - ambiguous criteria
+    domains = [e.data.get(CONF_INTEGRATION_DOMAIN, "unknown") for e in matches]
+    raise HomeAssistantError(
+        f"Multiple entries match the {criteria_name} criteria: {', '.join(domains)}. "
+        f"Use 'domain' or 'entry_id' for unambiguous selection."
+    )
 
 
 async def async_handle_add(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -167,6 +188,11 @@ async def async_handle_add(hass: HomeAssistant, call: ServiceCall) -> None:
 
     if result.get("type") == "abort":
         reason = result.get("reason", "unknown")
+        # Include description placeholders in error for better diagnostics
+        placeholders = result.get("description_placeholders", {})
+        if placeholders:
+            details = ", ".join(f"{k}={v}" for k, v in placeholders.items())
+            raise HomeAssistantError(f"Failed to add integration: {reason} ({details})")
         raise HomeAssistantError(f"Failed to add integration: {reason}")
 
     if result.get("type") == "form":

@@ -379,7 +379,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="confirm_overwrite",
             data_schema=vol.Schema(
                 {
-                    vol.Required("confirm", default=False): bool,
+                    vol.Required("confirm", default=False): cv.boolean,
                 }
             ),
             description_placeholders={"domain": self._selected_domain},
@@ -405,7 +405,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="confirm_entry_overwrite",
             data_schema=vol.Schema(
                 {
-                    vol.Required("confirm", default=False): bool,
+                    vol.Required("confirm", default=False): cv.boolean,
                 }
             ),
             description_placeholders={
