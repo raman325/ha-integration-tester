@@ -23,6 +23,7 @@ from .const import (
     CONF_URL,
     DOMAIN,
 )
+from .exceptions import InvalidGitHubURLError
 from .helpers import parse_github_url
 
 if TYPE_CHECKING:
@@ -104,7 +105,7 @@ def _find_entry_by_criteria(
             target_owner_repo = f"{parsed.owner}/{parsed.repo}"
             target_ref_type = parsed.reference_type
             target_ref_value = parsed.reference_value
-        except Exception:
+        except InvalidGitHubURLError:
             return None
 
         matches: list[ConfigEntry] = []
@@ -128,7 +129,7 @@ def _find_entry_by_criteria(
                     else:
                         # No specific ref, match on owner/repo only
                         matches.append(entry)
-            except Exception:
+            except InvalidGitHubURLError:
                 continue
 
         return _check_unique_match(matches, "url")
@@ -143,7 +144,7 @@ def _find_entry_by_criteria(
                 entry_owner_repo = f"{entry_parsed.owner}/{entry_parsed.repo}"
                 if entry_owner_repo == owner_repo:
                     matches.append(entry)
-            except Exception as exc:
+            except InvalidGitHubURLError as exc:
                 _LOGGER.debug(
                     "Failed to parse URL '%s' for entry '%s': %s",
                     entry_url,
