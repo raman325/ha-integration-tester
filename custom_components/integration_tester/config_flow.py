@@ -157,7 +157,9 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="manifest_not_found")
         except GitHubAPIError as err:
             _LOGGER.error("GitHub API error during import: %s", err)
-            return self.async_abort(reason="github_error")
+            return self.async_abort(
+                reason="github_error", description_placeholders={"error": str(err)}
+            )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
