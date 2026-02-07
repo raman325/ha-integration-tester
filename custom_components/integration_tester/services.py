@@ -253,6 +253,7 @@ async def async_handle_remove(hass: HomeAssistant, call: ServiceCall) -> None:
 
 def async_register_services(hass: HomeAssistant) -> None:
     """Register Integration Tester services."""
+
     # Define async wrappers to properly capture hass and ensure handlers are awaited.
     # Using lambdas would return coroutines that HA treats as sync (never awaited).
     async def handle_add(call: ServiceCall) -> None:
