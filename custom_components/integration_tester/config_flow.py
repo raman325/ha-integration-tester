@@ -20,7 +20,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import IntegrationTesterGitHubAPI
 from .const import (
     CONF_GITHUB_TOKEN,
-    CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
     CONF_IS_PART_OF_HA_CORE,
     CONF_REFERENCE_TYPE,
@@ -336,8 +335,8 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         Check for conflicts with existing integrations.
 
         Handles three cases:
-        1. Already tracked by Integration Tester from same repo → abort
-        2. Already tracked by Integration Tester from different repo → abort
+        1. Already tracked by Integration Tester → confirm overwrite (auto-remove if overwrite=True)
+        2. Folder exists with our marker (switching reference) → proceed
         3. Folder exists but not managed by us → confirm overwrite
         """
         await self.async_set_unique_id(self._selected_domain)
@@ -462,12 +461,13 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
 
         # Build minimal data (dynamic fields derived by coordinator)
         # Store normalized URL (just owner/repo) since reference_type/value are separate
+        # Note: CONF_INSTALLED_COMMIT is intentionally NOT set here - it's set by
+        # async_setup_entry after successful download to trigger the install flow.
         data = {
             CONF_URL: self._resolved.repo_url,
             CONF_REFERENCE_TYPE: self._resolved.reference_type.value,
             CONF_REFERENCE_VALUE: self._resolved.reference_value,
             CONF_INTEGRATION_DOMAIN: self._selected_domain,
-            CONF_INSTALLED_COMMIT: self._get_current_ref(),
             CONF_IS_PART_OF_HA_CORE: self._resolved.is_part_of_ha_core,
         }
 
