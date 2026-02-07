@@ -209,6 +209,7 @@ def create_config_entry(
     data: dict[str, Any],
     source: str = "user",
     unique_id: str | None = None,
+    options: dict[str, Any] | None = None,
 ) -> MockConfigEntry:
     """Create a MockConfigEntry for testing.
 
@@ -221,6 +222,7 @@ def create_config_entry(
         data: Entry data.
         source: Entry source.
         unique_id: Entry unique ID.
+        options: Entry options.
 
     Returns:
         MockConfigEntry instance.
@@ -234,4 +236,5 @@ def create_config_entry(
         data=data,
         source=source,
         unique_id=unique_id,
+        options=options or {},
     )
