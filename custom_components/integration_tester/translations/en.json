@@ -6,10 +6,12 @@
         "description": "Enter a GitHub URL to download a custom integration.\n\nSupported formats:\n- `github.com/owner/repo` (default branch)\n- `github.com/owner/repo/tree/branch-name`\n- `github.com/owner/repo/pull/123`\n- `github.com/owner/repo/commit/abc123`",
         "data": {
           "url": "GitHub URL",
-          "github_token": "GitHub Personal Access Token"
+          "github_token": "GitHub Personal Access Token",
+          "restart": "Restart after install"
         },
         "data_description": {
-          "github_token": "Required for API rate limits. Create a token at github.com/settings/tokens with no special scopes needed for public repos."
+          "github_token": "Required for API rate limits. Create a token at github.com/settings/tokens with no special scopes needed for public repos.",
+          "restart": "Automatically restart Home Assistant after the integration is installed."
         }
       },
       "select_integration": {
@@ -25,6 +27,13 @@
         "data": {
           "confirm": "I understand, proceed anyway"
         }
+      },
+      "confirm_entry_overwrite": {
+        "title": "Replace Existing Entry",
+        "description": "Integration Tester is already tracking `{domain}` from:\n\n`{existing_url}`\n\nDo you want to **remove the existing entry** and track from the new source instead?",
+        "data": {
+          "confirm": "Yes, replace the existing entry"
+        }
       }
     },
     "error": {
@@ -37,6 +46,10 @@
     },
     "abort": {
       "user_cancelled": "Setup cancelled.",
+      "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
+      "github_error": "GitHub API error: {error}",
+      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/<domain>/manifest.json",
+      "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/.",
       "multiple_integrations_found": "This PR modifies multiple integrations. Please use the UI to select which integration to install.",
       "missing_url": "No URL was provided.",
       "no_token": "No GitHub token is configured. Please set up via the UI first.",

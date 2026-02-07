@@ -46,6 +46,10 @@
     },
     "abort": {
       "user_cancelled": "Setup cancelled.",
+      "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
+      "github_error": "GitHub API error: {error}",
+      "manifest_not_found": "Could not find manifest.json in this repository. Expected structure: custom_components/<domain>/manifest.json",
+      "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/.",
       "multiple_integrations_found": "This PR modifies multiple integrations. Please use the UI to select which integration to install.",
       "missing_url": "No URL was provided.",
       "no_token": "No GitHub token is configured. Please set up via the UI first.",
