@@ -98,9 +98,10 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         return vol.Schema(schema)
 
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
-        """Handle import from service call."""
-        # Import step receives {"url": "...", "overwrite": bool, "restart": bool}
-        # Process like user step but without showing forms on error
+        """Handle import from service call.
+
+        Receives: {"url": "...", "overwrite": bool, "restart": bool, "domain": str|None}
+        """
         url = import_data.get("url")
         if not url:
             return self.async_abort(reason="missing_url")
@@ -108,6 +109,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         # Store options from import data
         self._overwrite_existing = import_data.get("overwrite", False)
         self._restart_after_install = import_data.get("restart", False)
+        requested_domain = import_data.get("domain")
 
         try:
             parsed_url = parse_github_url(url)
@@ -126,7 +128,6 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             self._resolved = await self._api.resolve_reference(parsed_url)
 
             if self._resolved.is_part_of_ha_core:
-                # For core PRs, we need user interaction to select integration
                 if self._resolved.reference_type == ReferenceType.PR:
                     integrations = await self._api.get_core_pr_integrations(
                         self._resolved.owner,
@@ -135,10 +136,26 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                     if not integrations:
                         return self.async_abort(reason="no_integrations_found")
-                    if len(integrations) > 1:
-                        # Multiple integrations - can't complete via import/service
-                        return self.async_abort(reason="multiple_integrations_found")
-                    self._selected_domain = integrations[0]
+                    if len(integrations) == 1:
+                        self._selected_domain = integrations[0]
+                    elif requested_domain:
+                        # Caller specified which integration to install
+                        if requested_domain not in integrations:
+                            return self.async_abort(
+                                reason="domain_not_in_pr",
+                                description_placeholders={
+                                    "domain": requested_domain,
+                                    "integrations": ", ".join(integrations),
+                                },
+                            )
+                        self._selected_domain = requested_domain
+                    else:
+                        return self.async_abort(
+                            reason="multiple_integrations_found",
+                            description_placeholders={
+                                "integrations": ", ".join(integrations),
+                            },
+                        )
                 else:
                     return self.async_abort(reason="import_core_requires_pr")
             else:
@@ -337,10 +354,11 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         Check for conflicts with existing integrations.
 
         Handles three cases:
-        1. Already tracked by Integration Tester → confirm overwrite (auto-remove if overwrite=True)
-           For import flows without overwrite, abort with clear error.
+        1. Already tracked by Integration Tester → confirm overwrite (auto-remove if
+           overwrite=True). For import flows without overwrite, abort with clear error.
         2. Folder exists with our marker (switching reference) → proceed
-        3. Folder exists but not managed by us → confirm overwrite (abort for import flows)
+        3. Folder exists but not managed by us → confirm overwrite in UI, or proceed
+           if overwrite=True from service. For import flows without overwrite, abort.
         """
         await self.async_set_unique_id(self._selected_domain)
         is_import = self.context.get("source") == "import"
@@ -369,6 +387,9 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         if integration_exists(self.hass, self._selected_domain):
             if integration_has_marker(self.hass, self._selected_domain):
                 # We manage it, can proceed (switching reference)
+                return await self._create_entry()
+            # Overwrite requested — proceed (files will be replaced on install)
+            if self._overwrite_existing:
                 return await self._create_entry()
             # For import flows, abort with clear error
             if is_import:

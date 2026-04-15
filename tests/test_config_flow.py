@@ -812,6 +812,182 @@ class TestImportFlow:
         # Verify new entry was created with new URL
         assert "Lock Code Manager" in result["title"]
 
+    async def test_import_core_pr_multiple_integrations_with_domain(
+        self, hass: HomeAssistant
+    ):
+        """Test import flow selects integration when domain is provided."""
+        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference(
+                    owner="home-assistant",
+                    repo="core",
+                    reference_type=ReferenceType.PR,
+                    reference_value="134000",
+                    is_part_of_ha_core=True,
+                )
+            )
+
+            # Multiple integrations modified
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["hue", "zwave_js"]
+            )
+
+            # Mock get_core_integration_info for the selected domain
+            with patch(
+                "custom_components.integration_tester.config_flow.get_core_integration_info",
+                new_callable=AsyncMock,
+            ) as mock_get_info:
+                mock_get_info.return_value = MagicMock(
+                    domain="zwave_js", name="Z-Wave JS"
+                )
+                with patch(
+                    "custom_components.integration_tester.config_flow.integration_exists",
+                    return_value=False,
+                ):
+                    result = await hass.config_entries.flow.async_init(
+                        DOMAIN,
+                        context={"source": "import"},
+                        data={
+                            "url": "https://github.com/home-assistant/core/pull/134000",
+                            "domain": "zwave_js",
+                        },
+                    )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"][CONF_INTEGRATION_DOMAIN] == "zwave_js"
+
+    async def test_import_core_pr_domain_not_in_pr(self, hass: HomeAssistant):
+        """Test import flow aborts when specified domain is not in the PR."""
+        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference(
+                    owner="home-assistant",
+                    repo="core",
+                    reference_type=ReferenceType.PR,
+                    reference_value="134000",
+                    is_part_of_ha_core=True,
+                )
+            )
+
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["hue", "zwave_js"]
+            )
+
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "import"},
+                data={
+                    "url": "https://github.com/home-assistant/core/pull/134000",
+                    "domain": "nonexistent",
+                },
+            )
+
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "domain_not_in_pr"
+        assert "nonexistent" in result["description_placeholders"]["domain"]
+        assert "hue" in result["description_placeholders"]["integrations"]
+
+    async def test_import_overwrite_unmanaged_folder(self, hass: HomeAssistant):
+        """Test import with overwrite=True proceeds when unmanaged folder exists."""
+        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference()
+            )
+            mock_api.file_exists = AsyncMock(return_value=True)
+            mock_api.get_directory_contents = AsyncMock(
+                return_value=[{"name": "lock_code_manager", "type": "dir"}]
+            )
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "lock_code_manager", "name": "Lock Code Manager"}'
+            )
+
+            with (
+                patch(
+                    "custom_components.integration_tester.config_flow.integration_exists",
+                    return_value=True,
+                ),
+                patch(
+                    "custom_components.integration_tester.config_flow.integration_has_marker",
+                    return_value=False,
+                ),
+            ):
+                result = await hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "import"},
+                    data={
+                        "url": "https://github.com/raman325/lock_code_manager/pull/1",
+                        "overwrite": True,
+                    },
+                )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"][CONF_INTEGRATION_DOMAIN] == "lock_code_manager"
+
+    async def test_import_no_overwrite_unmanaged_folder_aborts(
+        self, hass: HomeAssistant
+    ):
+        """Test import without overwrite aborts when unmanaged folder exists."""
+        hass.data[DOMAIN] = {CONF_GITHUB_TOKEN: "test_token"}
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = MagicMock()
+            mock_api_cls.return_value = mock_api
+
+            mock_api.resolve_reference = AsyncMock(
+                return_value=create_resolved_reference()
+            )
+            mock_api.file_exists = AsyncMock(return_value=True)
+            mock_api.get_directory_contents = AsyncMock(
+                return_value=[{"name": "lock_code_manager", "type": "dir"}]
+            )
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "lock_code_manager", "name": "Lock Code Manager"}'
+            )
+
+            with (
+                patch(
+                    "custom_components.integration_tester.config_flow.integration_exists",
+                    return_value=True,
+                ),
+                patch(
+                    "custom_components.integration_tester.config_flow.integration_has_marker",
+                    return_value=False,
+                ),
+            ):
+                result = await hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "import"},
+                    data={
+                        "url": "https://github.com/raman325/lock_code_manager/pull/1",
+                    },
+                )
+
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "folder_exists"
+
 
 class TestOptionsFlow:
     """Tests for options flow."""

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
@@ -46,6 +46,7 @@ ATTR_DELETE_FILES = "delete_files"
 SERVICE_ADD_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_URL): cv.string,
+        vol.Optional(ATTR_DOMAIN): cv.string,
         vol.Optional(ATTR_OVERWRITE, default=False): cv.boolean,
         vol.Optional(ATTR_RESTART, default=False): cv.boolean,
     }
@@ -180,11 +181,19 @@ async def async_handle_add(hass: HomeAssistant, call: ServiceCall) -> None:
     overwrite = call.data[ATTR_OVERWRITE]
     restart = call.data[ATTR_RESTART]
 
+    import_data: dict[str, Any] = {
+        "url": url,
+        "overwrite": overwrite,
+        "restart": restart,
+    }
+    if domain := call.data.get(ATTR_DOMAIN):
+        import_data["domain"] = domain
+
     # Trigger config flow with import source
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": "import"},
-        data={"url": url, "overwrite": overwrite, "restart": restart},
+        data=import_data,
     )
 
     if result.get("type") == "abort":
@@ -313,10 +322,3 @@ def async_register_services(hass: HomeAssistant) -> None:
         handle_remove,
         schema=SERVICE_REMOVE_SCHEMA,
     )
-
-
-def async_unregister_services(hass: HomeAssistant) -> None:
-    """Unregister Integration Tester services."""
-    hass.services.async_remove(DOMAIN, SERVICE_ADD)
-    hass.services.async_remove(DOMAIN, SERVICE_LIST)
-    hass.services.async_remove(DOMAIN, SERVICE_REMOVE)

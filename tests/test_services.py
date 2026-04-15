@@ -35,7 +35,6 @@ from custom_components.integration_tester.services import (
     async_handle_list,
     async_handle_remove,
     async_register_services,
-    async_unregister_services,
 )
 
 from .conftest import create_config_entry
@@ -229,6 +228,52 @@ class TestAsyncHandleAdd:
             },
         )
 
+    async def test_add_with_domain(self, hass: HomeAssistant):
+        """Test add with domain passes it to config flow."""
+        call = MagicMock()
+        call.data = {
+            ATTR_URL: "https://github.com/home-assistant/core/pull/134000",
+            ATTR_DOMAIN: "zwave_js",
+            ATTR_OVERWRITE: False,
+            ATTR_RESTART: False,
+        }
+
+        with patch.object(
+            hass.config_entries.flow, "async_init", new_callable=AsyncMock
+        ) as mock_init:
+            mock_init.return_value = {"type": "create_entry", "entry_id": "test_id"}
+            await async_handle_add(hass, call)
+
+        mock_init.assert_called_once_with(
+            DOMAIN,
+            context={"source": "import"},
+            data={
+                "url": "https://github.com/home-assistant/core/pull/134000",
+                "domain": "zwave_js",
+                "overwrite": False,
+                "restart": False,
+            },
+        )
+
+    async def test_add_without_domain_omits_key(self, hass: HomeAssistant):
+        """Test add without domain does not include domain key in import data."""
+        call = MagicMock()
+        call.data = {
+            ATTR_URL: "https://github.com/owner/repo/pull/123",
+            ATTR_OVERWRITE: False,
+            ATTR_RESTART: False,
+        }
+
+        with patch.object(
+            hass.config_entries.flow, "async_init", new_callable=AsyncMock
+        ) as mock_init:
+            mock_init.return_value = {"type": "create_entry", "entry_id": "test_id"}
+            await async_handle_add(hass, call)
+
+        # domain key should not be in the import data
+        call_data = mock_init.call_args[1]["data"]
+        assert "domain" not in call_data
+
     async def test_add_abort_raises_error(self, hass: HomeAssistant):
         """Test add raises error when flow aborts."""
         call = MagicMock()
@@ -389,15 +434,6 @@ class TestServiceRegistration:
         assert hass.services.has_service(DOMAIN, SERVICE_ADD)
         assert hass.services.has_service(DOMAIN, SERVICE_LIST)
         assert hass.services.has_service(DOMAIN, SERVICE_REMOVE)
-
-    def test_unregister_services(self, hass: HomeAssistant):
-        """Test services are unregistered."""
-        async_register_services(hass)
-        async_unregister_services(hass)
-
-        assert not hass.services.has_service(DOMAIN, SERVICE_ADD)
-        assert not hass.services.has_service(DOMAIN, SERVICE_LIST)
-        assert not hass.services.has_service(DOMAIN, SERVICE_REMOVE)
 
 
 class TestFindEntryByCriteriaEdgeCases:

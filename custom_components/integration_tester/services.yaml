@@ -10,11 +10,20 @@ add:
       example: "https://github.com/owner/repo/pull/123"
       selector:
         text:
+    domain:
+      name: Integration Domain
+      description: >-
+        The integration domain to install. Only needed for Home Assistant core PRs
+        that modify multiple integrations. Specifies which integration to extract.
+      example: "zwave"
+      selector:
+        text:
     overwrite:
       name: Overwrite Existing
       description: >-
-        If an existing Integration Tester entry exists for this domain,
-        remove it and create a new one. Default is false (raises an error on conflict).
+        If an existing Integration Tester entry or unmanaged integration folder
+        exists for this domain, overwrite it. Default is false (raises an error
+        on conflict).
       default: false
       selector:
         boolean:

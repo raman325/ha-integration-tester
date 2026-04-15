@@ -127,26 +127,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 is_core,
             )
 
-            # Update config entry with installed commit
+            # Check if restart was requested (set by config flow in entry options)
+            should_restart = entry.options.get("restart_after_install", False)
+
+            # Update config entry with installed commit and clear restart flag
+            # in a single call to avoid intermediate state and extra event firing.
+            # The flag is cleared BEFORE restart attempt to prevent infinite restart
+            # loops if setup runs again before shutdown completes.
+            updated_options = (
+                {k: v for k, v in entry.options.items() if k != "restart_after_install"}
+                if should_restart
+                else entry.options
+            )
             hass.config_entries.async_update_entry(
                 entry,
                 data={**entry.data, CONF_INSTALLED_COMMIT: commit_sha},
+                options=dict(updated_options),
             )
-
-            # Check if restart was requested (set by config flow in entry options)
-            should_restart = entry.options.get("restart_after_install", False)
-            # Clear the flag BEFORE restart attempt to prevent infinite restart loops.
-            # If restart fails, we fall back to creating a repair issue instead of
-            # retrying the restart on next setup (which could cause boot loops).
-            if should_restart:
-                hass.config_entries.async_update_entry(
-                    entry,
-                    options={
-                        k: v
-                        for k, v in entry.options.items()
-                        if k != "restart_after_install"
-                    },
-                )
 
             if should_restart:
                 # Trigger restart and return immediately - no point setting up
