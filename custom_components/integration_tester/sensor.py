@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -20,6 +21,7 @@ from .const import (
     CONF_INTEGRATION_DOMAIN,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
+    CONF_URL,
     DATA_BRANCH_NAME,
     DATA_BRANCH_URL,
     DATA_COMMIT_AUTHOR,
@@ -40,6 +42,7 @@ from .const import (
     DATA_SOURCE_BRANCH,
     DATA_SOURCE_REPO_URL,
     DATA_TARGET_BRANCH,
+    DOMAIN,
     ReferenceType,
 )
 from .coordinator import IntegrationTesterCoordinator
@@ -48,6 +51,18 @@ if TYPE_CHECKING:
     pass
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _build_github_url(data: dict) -> str:
+    """Build a GitHub URL for the tracked reference."""
+    base_url = data.get(CONF_URL, "")
+    ref_type = ReferenceType(data[CONF_REFERENCE_TYPE])
+    ref_value = data.get(CONF_REFERENCE_VALUE, "")
+    if ref_type == ReferenceType.PR:
+        return f"{base_url}/pull/{ref_value}"
+    if ref_type == ReferenceType.BRANCH:
+        return f"{base_url}/tree/{ref_value}"
+    return f"{base_url}/commit/{ref_value}"
 
 
 async def async_setup_entry(
@@ -86,6 +101,18 @@ class IntegrationTesterSensorBase(
         self._domain = entry.data[CONF_INTEGRATION_DOMAIN]
 
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        ref_type = ReferenceType(entry.data[CONF_REFERENCE_TYPE])
+        ref_value = entry.data[CONF_REFERENCE_VALUE]
+        self._attr_device_info = DeviceInfo(
+            identifiers={
+                (DOMAIN, self._domain),
+                (DOMAIN, f"{ref_type}:{ref_value}"),
+            },
+            name=entry.title,
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url=_build_github_url(entry.data),
+            model=ref_type.value.upper(),
+        )
 
     @property
     def available(self) -> bool:
