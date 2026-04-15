@@ -185,6 +185,7 @@ Integration Tester will warn you if a `custom_components/` folder already exists
 ### How does the `overwrite` flag work?
 
 `overwrite` handles two scenarios:
+
 - **Existing Integration Tester entry** for the same domain: the old entry is removed and replaced with the new one
 - **Existing `custom_components/` folder** not managed by Integration Tester: the folder is replaced with the downloaded version
 
