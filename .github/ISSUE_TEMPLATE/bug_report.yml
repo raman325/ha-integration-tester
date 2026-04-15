@@ -1,0 +1,71 @@
+---
+name: Bug report
+description: Create a report to help us improve
+title: "[ISSUE] "
+labels: ["bug", "pending"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Please be clear and concise, and also tell us what you expected to happen
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce the issue
+      description: |
+        Please tell us exactly how to reproduce your issue.
+        Provide clear and concise step by step instructions and add code snippets if needed.
+      value: |
+        1.
+        2.
+        3.
+        ...
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ## Environment
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant Version
+      description: What version of Home Assistant are you running?
+      placeholder: 2026.4.0
+    validations:
+      required: true
+  - type: input
+    id: it_version
+    attributes:
+      label: What version of Integration Tester are you running?
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug logs
+      description: >
+        Enable debug logging by adding
+        `custom_components.integration_tester: debug` under `logger > logs` in
+        your `configuration.yaml`, restart, reproduce the issue, then paste the
+        relevant log lines here. This field is automatically formatted as code.
+      render: shell
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else?
+      description: Is there any other information that's worth mentioning?
