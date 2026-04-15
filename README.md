@@ -51,47 +51,119 @@ Use a PR URL like `github.com/home-assistant/core/pull/12345` (or from your own 
 2. If multiple, you'll select which one to install
 3. The integration is extracted and installed as a custom component, overriding the built-in version
 
+## Configuration Options
+
+### Config Flow (UI)
+
+| Field | Description |
+|-------|-------------|
+| **URL** | GitHub URL (PR, branch, commit, or plain owner/repo) |
+| **GitHub Token** | Personal access token (only shown if not already configured) |
+| **Restart after install** | Automatically restart HA after the integration is installed |
+
+### Options Flow
+
+The GitHub token can be updated at any time via any Integration Tester config entry's options flow (Settings > Devices & Services > Integration Tester > Configure).
+
+## Services
+
+### `integration_tester.add`
+
+Install an integration from a GitHub URL.
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `url` | Yes | — | GitHub URL (PR, branch, commit, or plain owner/repo) |
+| `domain` | No | — | Integration domain to install. Only needed for core PRs that modify multiple integrations. |
+| `overwrite` | No | `false` | Replace an existing Integration Tester entry or overwrite an unmanaged `custom_components/` folder for the same domain |
+| `restart` | No | `false` | Automatically restart HA after install |
+
+```yaml
+service: integration_tester.add
+data:
+  url: "https://github.com/owner/repo/pull/123"
+  overwrite: true
+  restart: true
+```
+
+### `integration_tester.list`
+
+Returns all integrations managed by Integration Tester. This is a response-only service (use in Developer Tools > Services with "Return response" enabled, or in automations with `response_variable`).
+
+```yaml
+service: integration_tester.list
+```
+
+Response:
+
+```json
+{
+  "entries": [
+    {
+      "entry_id": "...",
+      "domain": "my_integration",
+      "url": "https://github.com/owner/repo",
+      "owner_repo": "owner/repo",
+      "reference_type": "pr",
+      "reference_value": "123",
+      "title": "My Integration (PR #123)"
+    }
+  ],
+  "count": 1
+}
+```
+
+### `integration_tester.remove`
+
+Remove a managed integration. Provide exactly one identifier.
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `domain` | One of these | — | Integration domain (e.g., `my_integration`) |
+| `url` | One of these | — | GitHub URL to match |
+| `owner_repo` | One of these | — | Owner/repo slug (e.g., `owner/repo`) |
+| `entry_id` | One of these | — | Config entry ID |
+| `delete_files` | No | `true` | Delete integration files from `custom_components/`. Set to `false` to remove the config entry but keep the files in place. |
+
+```yaml
+service: integration_tester.remove
+data:
+  domain: "my_integration"
+  delete_files: false
+```
+
 ## Features
 
-### Sensors
+### Entities
 
-| Sensor | Description |
+Each tracked integration creates a device with the following entities:
+
+| Entity | Description |
 |--------|-------------|
-| Commit | Current installed commit hash (with attributes for full hash, message, author, etc.) |
-| Last Push | Timestamp of the last push to the tracked branch/PR |
-
-### Update Entity
-
-For branches and PRs (not commits), an update entity tracks when new commits are available:
-
-- Checks every 5 minutes for updates
-- Manual check available via "Check for updates" in the UI
-- Detects force pushes (compares commit SHA, not git history)
+| **Commit** (sensor) | Current commit hash with attributes for full hash, message, author, date, repo URL, and reference-specific metadata (PR number/state/title, branch name, etc.) |
+| **Last Push** (sensor) | Timestamp of the last push to the tracked branch/PR |
+| **Update** (update) | Available for PRs and branches only. Checks every 5 minutes for new commits and allows one-click install from the UI. |
 
 ### Repair Issues
 
-The integration creates repair issues for:
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| **Restart required** | Warning | After installing or updating. Click "Fix" to restart HA. |
+| **PR merged/closed** | Error | When a tracked PR is no longer open. Click "Fix" to remove the config entry and clean up files. |
+| **Integration removed from diff** | Error | When a core PR no longer modifies the tracked integration. Click "Fix" to remove. |
+| **Download failed** | Error | When GitHub API requests fail 3+ times in a row. Auto-resolves when the next check succeeds. |
+| **Token invalid** | Error | When the GitHub token expires or is revoked. Update via the options flow. |
 
-- **Restart required** - After installing/updating, click to restart HA
-- **PR merged/closed** - When a tracked PR is no longer open
-- **Integration removed from diff** - When a core PR no longer modifies the tracked integration
-- **Download failed** - When GitHub API requests fail repeatedly
-
-## Important Notes
-
-### GitHub API Token Required
+## GitHub API Token
 
 A GitHub personal access token is **required** during setup:
 
 - Without authentication: 60 requests/hour (insufficient for polling)
 - With personal access token: 5,000 requests/hour
 
-Once configured, the token can always be updated later via any Integration Tester config entry options flow.
+**Create a dedicated token** for this integration. API rate limits are per-token, so sharing a token with other applications could cause rate limit issues.
 
-**Important:** Create a dedicated token for this integration.
-API rate limits are per-token, so sharing a token with other applications could cause rate limit issues.
-
-#### How to Create a Token
+### How to Create a Token
 
 1. Go to [GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)](https://github.com/settings/tokens)
 2. Click **Generate new token** > **Generate new token (classic)**
@@ -100,35 +172,62 @@ API rate limits are per-token, so sharing a token with other applications could 
 5. Select scope: **`public_repo`** (for public repos only) or **`repo`** (if you need access to private repos)
 6. Click **Generate token** and copy it immediately (you won't see it again)
 
-### Commits Are Pinned
+## FAQ
 
-When tracking a specific commit (not a branch or PR):
+### What happens if the token expires?
 
-- No update entity is created
-- The commit is immutable - if someone amends and force-pushes, the original commit still exists
-- To switch to the amended commit, remove the config entry and add a new one
+A **Token invalid** repair issue is created. The integration will stop polling for updates until you provide a new token via the options flow (Settings > Devices & Services > Integration Tester > Configure on any entry).
 
-### HACS Conflicts
+### What happens if I overwrite an integration managed by HACS?
 
-If you're testing a PR for an integration you have installed via HACS:
+Integration Tester will warn you if a `custom_components/` folder already exists that it doesn't manage. In the UI you'll get a confirmation dialog; via the `add` service, set `overwrite: true` to proceed. Be aware that HACS may overwrite your version on its next update, so it's best to remove the integration from HACS while testing.
 
-1. Remove it from HACS first, or be aware that HACS updates could overwrite your PR version
-2. Once done testing, delete from Integration Tester and re-add via HACS
-3. You may need to reconfigure the integration depending on changes between versions
+### How does the `overwrite` flag work?
 
-### Only GitHub Supported
+`overwrite` handles two scenarios:
+- **Existing Integration Tester entry** for the same domain: the old entry is removed and replaced with the new one
+- **Existing `custom_components/` folder** not managed by Integration Tester: the folder is replaced with the downloaded version
 
-This integration only supports GitHub repositories.
+Without `overwrite`, both scenarios produce an error instead.
 
-## Troubleshooting
+### How do I install from a core PR that modifies multiple integrations?
 
-### "manifest.json not found"
+In the UI, you'll be shown a dropdown to select which integration to install. Via the `add` service, pass the `domain` parameter:
 
-The repository must have the standard structure: `custom_components/<domain>/manifest.json`
+```yaml
+service: integration_tester.add
+data:
+  url: "https://github.com/home-assistant/core/pull/12345"
+  domain: "zwave_js"
+```
 
-### "For Home Assistant core, please use a PR URL"
+### Can I keep the files after removing?
 
-For core repository, we need a PR to determine which integration to extract. Branch/commit URLs for core are not supported.
+Yes. Use `delete_files: false` with the `remove` service:
+
+```yaml
+service: integration_tester.remove
+data:
+  domain: "my_integration"
+  delete_files: false
+```
+
+This removes the config entry (stops polling, removes entities) but leaves the integration files in `custom_components/`. The integration will continue working but is no longer managed by Integration Tester.
+
+### Are commits pinned?
+
+Yes. When tracking a specific commit (not a branch or PR):
+
+- No update entity is created (commits are immutable)
+- To switch to a different commit, remove the config entry and add a new one
+
+### Can I use this with non-GitHub repositories?
+
+No. Only GitHub repositories are supported.
+
+### Why does core require a PR URL?
+
+For the home-assistant/core repository, Integration Tester needs to determine which integration to extract. It does this by examining the PR diff to see which files under `homeassistant/components/` are modified. Branch and commit URLs don't provide this context.
 
 ## Contributing
 
