@@ -224,13 +224,11 @@ class TestIsRepairIssueAcknowledged:
 class TestAsyncCreateFixFlow:
     """Tests for async_create_fix_flow."""
 
-    @pytest.mark.asyncio
     async def test_restart_required_flow(self, hass: HomeAssistant):
         """Test creating restart required flow."""
         flow = await async_create_fix_flow(hass, "restart_required_test", None)
         assert isinstance(flow, RestartRequiredRepairFlow)
 
-    @pytest.mark.asyncio
     async def test_pr_closed_flow(self, hass: HomeAssistant):
         """Test creating PR closed flow."""
         flow = await async_create_fix_flow(
@@ -238,7 +236,6 @@ class TestAsyncCreateFixFlow:
         )
         assert isinstance(flow, DeleteConfigEntryRepairFlow)
 
-    @pytest.mark.asyncio
     async def test_integration_removed_flow(self, hass: HomeAssistant):
         """Test creating integration removed flow."""
         flow = await async_create_fix_flow(
@@ -246,7 +243,6 @@ class TestAsyncCreateFixFlow:
         )
         assert isinstance(flow, DeleteConfigEntryRepairFlow)
 
-    @pytest.mark.asyncio
     async def test_default_flow(self, hass: HomeAssistant):
         """Test default confirm flow for unknown issues."""
         flow = await async_create_fix_flow(hass, "unknown_issue", None)
@@ -256,7 +252,6 @@ class TestAsyncCreateFixFlow:
 class TestRestartRequiredRepairFlow:
     """Tests for RestartRequiredRepairFlow."""
 
-    @pytest.mark.asyncio
     async def test_async_step_init_no_input(self, hass: HomeAssistant):
         """Test flow shows form when no input."""
         flow = RestartRequiredRepairFlow()
@@ -267,7 +262,6 @@ class TestRestartRequiredRepairFlow:
         assert result["type"] == "form"
         assert result["step_id"] == "init"
 
-    @pytest.mark.asyncio
     async def test_async_step_init_with_input(self, hass: HomeAssistant):
         """Test flow triggers restart when user confirms."""
         flow = RestartRequiredRepairFlow()
@@ -287,7 +281,6 @@ class TestRestartRequiredRepairFlow:
 class TestDeleteConfigEntryRepairFlow:
     """Tests for DeleteConfigEntryRepairFlow."""
 
-    @pytest.mark.asyncio
     async def test_async_step_init_no_input(self, hass: HomeAssistant):
         """Test flow shows form when no input."""
         flow = DeleteConfigEntryRepairFlow(entry_id="test_entry_id")
@@ -298,7 +291,6 @@ class TestDeleteConfigEntryRepairFlow:
         assert result["type"] == "form"
         assert result["step_id"] == "init"
 
-    @pytest.mark.asyncio
     async def test_async_step_init_with_input_entry_exists(
         self, hass: HomeAssistant, mock_config_entry
     ):
@@ -314,7 +306,6 @@ class TestDeleteConfigEntryRepairFlow:
         assert result["type"] == "create_entry"
         mock_remove.assert_called_once_with(mock_config_entry.entry_id)
 
-    @pytest.mark.asyncio
     async def test_async_step_init_with_input_entry_not_found(
         self, hass: HomeAssistant
     ):

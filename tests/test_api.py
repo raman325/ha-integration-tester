@@ -46,7 +46,6 @@ def api_and_client(mock_session):
 class TestGetPRInfo:
     """Tests for get_pr_info using fixture data."""
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_closed_not_merged(
         self, api_and_client, pr_response: dict[str, Any]
     ):
@@ -64,7 +63,6 @@ class TestGetPRInfo:
         assert result.head_sha == "e937d69acdeab0dc5eba5dbbc3418d78f4459533"
         assert result.head_ref == "renovate/configure"
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_open(self, api_and_client, pr_response: dict[str, Any]):
         """Test getting info for an open PR."""
         api, mock_client = api_and_client
@@ -76,7 +74,6 @@ class TestGetPRInfo:
 
         assert result.state == PRState.OPEN
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_merged(
         self, api_and_client, pr_response: dict[str, Any]
     ):
@@ -90,7 +87,6 @@ class TestGetPRInfo:
 
         assert result.state == PRState.MERGED
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_from_fork(
         self, api_and_client, pr_response: dict[str, Any]
     ):
@@ -107,7 +103,6 @@ class TestGetPRInfo:
 
         assert result.source_repo_url == "https://github.com/forker/lock_code_manager"
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_auth_error(self, api_and_client):
         """Test auth error handling."""
         api, mock_client = api_and_client
@@ -118,7 +113,6 @@ class TestGetPRInfo:
         with pytest.raises(GitHubAuthError):
             await api.get_pr_info("owner", "repo", 123)
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_rate_limit(self, api_and_client):
         """Test rate limit error handling."""
         api, mock_client = api_and_client
@@ -129,7 +123,6 @@ class TestGetPRInfo:
         with pytest.raises(GitHubRateLimitError):
             await api.get_pr_info("owner", "repo", 123)
 
-    @pytest.mark.asyncio
     async def test_get_pr_info_not_found(self, api_and_client):
         """Test not found error handling."""
         api, mock_client = api_and_client
@@ -144,7 +137,6 @@ class TestGetPRInfo:
 class TestGetCommitInfo:
     """Tests for get_commit_info using fixture data."""
 
-    @pytest.mark.asyncio
     async def test_get_commit_info(
         self, api_and_client, commit_response: dict[str, Any]
     ):
@@ -160,7 +152,6 @@ class TestGetCommitInfo:
         assert "ruff" in result.message.lower()  # First line of commit message
         assert result.author == "dependabot[bot]"  # From fixture data
 
-    @pytest.mark.asyncio
     async def test_get_commit_info_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
@@ -171,7 +162,6 @@ class TestGetCommitInfo:
         with pytest.raises(GitHubRateLimitError):
             await api.get_commit_info("owner", "repo", "abc123")
 
-    @pytest.mark.asyncio
     async def test_get_commit_info_not_found(self, api_and_client):
         """Test not found error."""
         api, mock_client = api_and_client
@@ -186,7 +176,6 @@ class TestGetCommitInfo:
 class TestGetBranchInfo:
     """Tests for get_branch_info using fixture data."""
 
-    @pytest.mark.asyncio
     async def test_get_branch_info(
         self, api_and_client, branch_response: dict[str, Any]
     ):
@@ -202,7 +191,6 @@ class TestGetBranchInfo:
         assert result.head_sha == "dbfc180aed0a16c253c1563023b069d5bf3ebcd3"
         assert "ruff" in result.commit_message.lower()
 
-    @pytest.mark.asyncio
     async def test_get_branch_info_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
@@ -213,7 +201,6 @@ class TestGetBranchInfo:
         with pytest.raises(GitHubRateLimitError):
             await api.get_branch_info("owner", "repo", "main")
 
-    @pytest.mark.asyncio
     async def test_get_branch_info_not_found(self, api_and_client):
         """Test not found error."""
         api, mock_client = api_and_client
@@ -228,7 +215,6 @@ class TestGetBranchInfo:
 class TestGetDefaultBranch:
     """Tests for get_default_branch."""
 
-    @pytest.mark.asyncio
     async def test_get_default_branch(self, api_and_client):
         """Test getting default branch."""
         api, mock_client = api_and_client
@@ -240,7 +226,6 @@ class TestGetDefaultBranch:
 
         assert result == "develop"
 
-    @pytest.mark.asyncio
     async def test_get_default_branch_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
@@ -255,7 +240,6 @@ class TestGetDefaultBranch:
 class TestIsCoreOrFork:
     """Tests for is_part_of_ha_core."""
 
-    @pytest.mark.asyncio
     async def test_is_core_direct_match(self, api_and_client):
         """Test direct match of home-assistant/core."""
         api, _ = api_and_client
@@ -263,7 +247,6 @@ class TestIsCoreOrFork:
         result = await api.is_part_of_ha_core("home-assistant", "core")
         assert result is True
 
-    @pytest.mark.asyncio
     async def test_is_core_fork(self, api_and_client):
         """Test detection of HA core fork via parent check."""
         api, mock_client = api_and_client
@@ -277,7 +260,6 @@ class TestIsCoreOrFork:
 
         assert result is True
 
-    @pytest.mark.asyncio
     async def test_is_not_core_or_fork(self, api_and_client):
         """Test non-core repository."""
         api, mock_client = api_and_client
@@ -289,7 +271,6 @@ class TestIsCoreOrFork:
 
         assert result is False
 
-    @pytest.mark.asyncio
     async def test_is_part_of_ha_core_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
@@ -304,7 +285,6 @@ class TestIsCoreOrFork:
 class TestGetPRFiles:
     """Tests for get_pr_files using fixture data."""
 
-    @pytest.mark.asyncio
     async def test_get_pr_files(
         self, api_and_client, core_pr_files_response: list[dict[str, Any]]
     ):
@@ -319,7 +299,6 @@ class TestGetPRFiles:
         # Fixture has files for niko_home_control
         assert any("niko_home_control" in f for f in result)
 
-    @pytest.mark.asyncio
     async def test_get_pr_files_pagination(self, api_and_client):
         """Test PR files with pagination."""
         api, mock_client = api_and_client
@@ -342,7 +321,6 @@ class TestGetPRFiles:
         assert len(result) == 101
         assert result[-1] == "last_file.py"
 
-    @pytest.mark.asyncio
     async def test_get_pr_files_auth_error(self, api_and_client):
         """Test auth error."""
         api, mock_client = api_and_client
@@ -357,7 +335,6 @@ class TestGetPRFiles:
 class TestDownloadArchive:
     """Tests for download_archive."""
 
-    @pytest.mark.asyncio
     async def test_download_archive(self, api_and_client):
         """Test downloading archive."""
         api, mock_client = api_and_client
@@ -371,7 +348,6 @@ class TestDownloadArchive:
         assert result == archive_data
         mock_client.repos.tarball.assert_called_once_with("owner/repo", ref="abc123")
 
-    @pytest.mark.asyncio
     async def test_download_archive_auth_error(self, api_and_client):
         """Test auth error."""
         api, mock_client = api_and_client
@@ -382,7 +358,6 @@ class TestDownloadArchive:
         with pytest.raises(GitHubAuthError):
             await api.download_archive("owner", "repo", "abc123")
 
-    @pytest.mark.asyncio
     async def test_download_archive_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
@@ -397,7 +372,6 @@ class TestDownloadArchive:
 class TestGetCorePRIntegrations:
     """Tests for get_core_pr_integrations using fixture data."""
 
-    @pytest.mark.asyncio
     async def test_get_core_pr_integrations(
         self, api_and_client, core_pr_files_response: list[dict[str, Any]]
     ):
@@ -415,7 +389,6 @@ class TestGetCorePRIntegrations:
 class TestResolveReference:
     """Tests for resolve_reference."""
 
-    @pytest.mark.asyncio
     async def test_resolve_pr_reference(
         self, api_and_client, pr_response: dict[str, Any]
     ):
@@ -441,7 +414,6 @@ class TestResolveReference:
         assert result.reference_type == ReferenceType.PR
         assert result.pr_info is not None
 
-    @pytest.mark.asyncio
     async def test_resolve_branch_reference(
         self, api_and_client, branch_response: dict[str, Any]
     ):
@@ -468,7 +440,6 @@ class TestResolveReference:
         assert result.reference_type == ReferenceType.BRANCH
         assert result.branch_info is not None
 
-    @pytest.mark.asyncio
     async def test_resolve_default_branch_reference(
         self, api_and_client, branch_response: dict[str, Any]
     ):
@@ -495,7 +466,6 @@ class TestResolveReference:
 
         assert result.branch_info is not None
 
-    @pytest.mark.asyncio
     async def test_resolve_commit_reference(
         self, api_and_client, commit_response: dict[str, Any]
     ):
@@ -526,7 +496,6 @@ class TestResolveReference:
 class TestGetFileContent:
     """Tests for get_file_content."""
 
-    @pytest.mark.asyncio
     async def test_get_file_content_base64(self, api_and_client):
         """Test getting file content with base64 encoding."""
         api, mock_client = api_and_client
@@ -544,7 +513,6 @@ class TestGetFileContent:
 
         assert result == content
 
-    @pytest.mark.asyncio
     async def test_get_file_content_not_found(self, api_and_client):
         """Test file not found error."""
         api, mock_client = api_and_client
@@ -559,7 +527,6 @@ class TestGetFileContent:
 class TestGetDirectoryContents:
     """Tests for get_directory_contents."""
 
-    @pytest.mark.asyncio
     async def test_get_directory_contents(self, api_and_client):
         """Test getting directory contents."""
         api, mock_client = api_and_client
@@ -583,7 +550,6 @@ class TestGetDirectoryContents:
         assert result[1]["name"] == "subdir"
         assert result[1]["type"] == "dir"
 
-    @pytest.mark.asyncio
     async def test_get_directory_contents_not_a_directory(self, api_and_client):
         """Test error when path is not a directory."""
         api, mock_client = api_and_client

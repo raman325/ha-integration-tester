@@ -42,7 +42,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: ConfigEntry[IntegrationTesterCoordinator],
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up update entity from a config entry.
@@ -53,13 +53,11 @@ async def async_setup_entry(
         async_add_entities: Callback to add entities.
 
     """
-    coordinator: IntegrationTesterCoordinator = hass.data[DOMAIN][entry.entry_id]
-
     # Only create update entity for branches and PRs, not commits
     if ReferenceType(entry.data[CONF_REFERENCE_TYPE]) == ReferenceType.COMMIT:
         return
 
-    async_add_entities([IntegrationUpdateEntity(coordinator, entry)])
+    async_add_entities([IntegrationUpdateEntity(entry.runtime_data, entry)])
 
 
 class IntegrationUpdateEntity(
