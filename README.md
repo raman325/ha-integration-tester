@@ -63,7 +63,9 @@ Use a PR URL like `github.com/home-assistant/core/pull/12345` (or from your own 
 
 ### Options Flow
 
-The GitHub token can be updated at any time via any Integration Tester config entry's options flow (Settings > Devices & Services > Integration Tester > Configure).
+The GitHub token can be updated at any time via any Integration Tester
+config entry's options flow
+(Settings > Devices & Services > Integration Tester > Configure).
 
 ## Services
 
@@ -88,7 +90,9 @@ data:
 
 ### `integration_tester.list`
 
-Returns all integrations managed by Integration Tester. This is a response-only service (use in Developer Tools > Services with "Return response" enabled, or in automations with `response_variable`).
+Returns all integrations managed by Integration Tester. This is a
+response-only service (use in Developer Tools > Services with
+"Return response" enabled, or in automations with `response_variable`).
 
 ```yaml
 service: integration_tester.list
@@ -161,7 +165,9 @@ A GitHub personal access token is **required** during setup:
 - Without authentication: 60 requests/hour (insufficient for polling)
 - With personal access token: 5,000 requests/hour
 
-**Create a dedicated token** for this integration. API rate limits are per-token, so sharing a token with other applications could cause rate limit issues.
+**Create a dedicated token** for this integration. API rate limits are
+per-token, so sharing a token with other applications could cause rate
+limit issues.
 
 ### How to Create a Token
 
@@ -176,18 +182,26 @@ A GitHub personal access token is **required** during setup:
 
 ### What happens if the token expires?
 
-A **Token invalid** repair issue is created. The integration will stop polling for updates until you provide a new token via the options flow (Settings > Devices & Services > Integration Tester > Configure on any entry).
+A **Token invalid** repair issue is created. The integration will stop
+polling for updates until you provide a new token via the options flow
+(Settings > Devices & Services > Integration Tester > Configure on any
+entry).
 
 ### What happens if I overwrite an integration managed by HACS?
 
-Integration Tester will warn you if a `custom_components/` folder already exists that it doesn't manage. In the UI you'll get a confirmation dialog; via the `add` service, set `overwrite: true` to proceed. Be aware that HACS may overwrite your version on its next update, so it's best to remove the integration from HACS while testing.
+Integration Tester will warn you if a `custom_components/` folder
+already exists that it doesn't manage. In the UI you'll get a
+confirmation dialog; via the `add` service, set `overwrite: true` to
+proceed. Be aware that HACS may overwrite your version on its next
+update, so it's best to remove the integration from HACS while testing.
 
 ### How does the `overwrite` flag work?
 
 `overwrite` handles two scenarios:
 
 - **Existing Integration Tester entry** for the same domain: the old entry is removed and replaced with the new one
-- **Existing `custom_components/` folder** not managed by Integration Tester: the folder is replaced with the downloaded version
+- **Existing `custom_components/` folder** not managed by Integration
+  Tester: the folder is replaced with the downloaded version
 
 Without `overwrite`, both scenarios produce an error instead.
 
@@ -213,7 +227,9 @@ data:
   delete_files: false
 ```
 
-This removes the config entry (stops polling, removes entities) but leaves the integration files in `custom_components/`. The integration will continue working but is no longer managed by Integration Tester.
+This removes the config entry (stops polling, removes entities) but
+leaves the integration files in `custom_components/`. The integration
+will continue working but is no longer managed by Integration Tester.
 
 ### Are commits pinned?
 
@@ -228,7 +244,10 @@ No. Only GitHub repositories are supported.
 
 ### Why does core require a PR URL?
 
-For the home-assistant/core repository, Integration Tester needs to determine which integration to extract. It does this by examining the PR diff to see which files under `homeassistant/components/` are modified. Branch and commit URLs don't provide this context.
+For the home-assistant/core repository, Integration Tester needs to
+determine which integration to extract. It does this by examining the
+PR diff to see which files under `homeassistant/components/` are
+modified. Branch and commit URLs don't provide this context.
 
 ## Contributing
 
