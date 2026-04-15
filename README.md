@@ -1,4 +1,4 @@
-# Integration Tester
+# Home Assistant Integration Tester
 
 [![GitHub Release][releases-shield]][releases]
 [![HACS][hacsbadge]][hacs]
