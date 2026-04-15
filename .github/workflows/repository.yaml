@@ -1,0 +1,195 @@
+---
+name: Repository
+
+# GHA requires bare `on:` which yamllint sees as boolean
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches: [main]
+  # pull_request_target runs in base repo context with write permissions,
+  # needed for fork PRs. Safe for auto-merge since it only runs for trusted
+  # actors (dependabot, pre-commit-ci, or manually labeled PRs).
+  pull_request_target:
+    types: [edited, labeled, opened, reopened, synchronize, unlabeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-release-draft:
+    name: Update Release Draft
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    concurrency:
+      # Use head_ref for PRs (branch name) or ref for pushes (refs/heads/main)
+      # This ensures PR updates are serialized while different PRs run concurrently
+      group: release-drafter-${{ github.head_ref || github.ref }}
+      cancel-in-progress: false
+    steps:
+      # Give GitHub API time to index newly merged PRs before querying
+      - name: Wait for PR indexing
+        if: github.event_name == 'push'
+        run: sleep 10
+      - uses: release-drafter/release-drafter@v7
+        with:
+          commitish: main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  auto-merge:
+    name: Auto Merge
+    runs-on: ubuntu-latest
+    # Only run on pull_request_target events (not push or workflow_dispatch)
+    # and only for dependabot, pre-commit-ci, or PRs with auto-merge label
+    if: >-
+      github.event_name == 'pull_request_target' && (
+        github.event.pull_request.user.login == 'dependabot[bot]' ||
+        github.event.pull_request.user.login == 'pre-commit-ci[bot]' ||
+        contains(github.event.pull_request.labels.*.name, 'auto-merge')
+      )
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      # Cancel in-progress runs for the same PR (only latest should merge)
+      group: auto-merge-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      # Fetch Dependabot metadata (only runs for dependabot PRs)
+      - name: Fetch Dependabot metadata
+        id: metadata
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      # Determine if PR is eligible for auto-merge
+      - name: Check eligibility
+        id: eligible
+        run: |
+          if [[ "$ACTOR" == "dependabot[bot]" ]]; then
+            # Dependabot: only auto-merge patch and minor updates
+            if [[ "$UPDATE_TYPE" == "version-update:semver-patch" ]] ||
+               [[ "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
+              echo "result=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "result=false" >> "$GITHUB_OUTPUT"
+              echo "Skipping: Dependabot major update requires manual review"
+            fi
+          else
+            # pre-commit-ci and auto-merge labeled PRs are always eligible
+            echo "result=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          ACTOR: ${{ github.event.pull_request.user.login }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+
+      # Wait for specific CI checks (explicit list, not branch protection)
+      - name: Wait for CI checks
+        if: steps.eligible.outputs.result == 'true'
+        timeout-minutes: 30
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          # Checks that must exist and pass (always run)
+          MUST_PASS: Check Changes,HACS,Hassfest
+          # Checks that must pass IF they run (may be skipped by path filter)
+          # yamllint disable-line rule:line-length
+          IF_RUN_PASS: Python / Setup,Python / Ruff,Python / Pytest *
+        run: |
+          IFS=',' read -ra MUST <<< "$MUST_PASS"
+          IFS=',' read -ra OPTIONAL <<< "$IF_RUN_PASS"
+          ALL_CHECKS=("${MUST[@]}" "${OPTIONAL[@]}")
+          echo "Must pass: ${MUST[*]}"
+          echo "If run, must pass: ${OPTIONAL[*]}"
+
+          # Fetch all check runs once per iteration
+          fetch_checks() {
+            gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
+              --jq '.check_runs[] | {name: .name, status: .status, conclusion: .conclusion}' \
+              2>/dev/null
+          }
+
+          while true; do
+            ALL_DONE=true
+            ANY_FAILED=false
+            MUST_FOUND=0
+            CHECKS_JSON=$(fetch_checks)
+
+            for CHECK in "${ALL_CHECKS[@]}"; do
+              # Check if this is a pattern (ends with *)
+              if [[ "$CHECK" == *'*' ]]; then
+                PREFIX="${CHECK%\*}"
+                MATCHES=$(echo "$CHECKS_JSON" | jq -s --arg p "$PREFIX" \
+                  '[.[] | select(.name | startswith($p))]')
+              else
+                MATCHES=$(echo "$CHECKS_JSON" | jq -s --arg n "$CHECK" \
+                  '[.[] | select(.name == $n)]')
+              fi
+
+              COUNT=$(echo "$MATCHES" | jq 'length')
+
+              if [ "$COUNT" -eq 0 ]; then
+                echo "$CHECK: not found"
+                continue
+              fi
+
+              # Track if this is a must-pass check
+              for M in "${MUST[@]}"; do
+                if [ "$CHECK" = "$M" ]; then
+                  MUST_FOUND=$((MUST_FOUND + COUNT))
+                  break
+                fi
+              done
+
+              # Check each instance
+              echo "$MATCHES" | jq -c '.[]' | while read -r item; do
+                NAME=$(echo "$item" | jq -r '.name')
+                STATUS=$(echo "$item" | jq -r '.status')
+                CONCLUSION=$(echo "$item" | jq -r '.conclusion')
+
+                if [ "$STATUS" != "completed" ]; then
+                  echo "$NAME: $STATUS"
+                  echo "PENDING" >> /tmp/check_status
+                elif [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
+                  echo "::error::$NAME failed ($CONCLUSION)"
+                  echo "FAILED" >> /tmp/check_status
+                else
+                  echo "$NAME: $CONCLUSION"
+                fi
+              done
+            done
+
+            # Check for failures or pending (subshell writes to temp file)
+            if grep -q "FAILED" /tmp/check_status 2>/dev/null; then
+              rm -f /tmp/check_status
+              exit 1
+            fi
+            if grep -q "PENDING" /tmp/check_status 2>/dev/null; then
+              ALL_DONE=false
+            fi
+            rm -f /tmp/check_status
+
+            if [ "$ALL_DONE" = true ]; then
+              if [ "$MUST_FOUND" -eq 0 ]; then
+                echo "::error::No required checks found - something is wrong"
+                exit 1
+              fi
+              echo "All checks passed! (found $MUST_FOUND required check instances)"
+              break
+            fi
+
+            sleep 30
+          done
+
+      # Merge after CI passes
+      - name: Merge PR
+        if: steps.eligible.outputs.result == 'true'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash "$PR_URL"
