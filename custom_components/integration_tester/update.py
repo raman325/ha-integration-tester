@@ -14,6 +14,7 @@ from homeassistant.components.update import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -22,6 +23,7 @@ from .const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
     CONF_REFERENCE_TYPE,
+    CONF_REFERENCE_VALUE,
     DATA_COMMIT_HASH,
     DATA_COMMIT_URL,
     DATA_IS_PART_OF_HA_CORE,
@@ -33,6 +35,7 @@ from .const import (
 from .coordinator import IntegrationTesterCoordinator
 from .helpers import extract_integration
 from .repairs import create_restart_required_issue
+from .sensor import _build_github_url
 
 if TYPE_CHECKING:
     pass
@@ -89,7 +92,19 @@ class IntegrationUpdateEntity(
             translation_key="update",
         )
         self._attr_unique_id = f"{entry.entry_id}_update"
-        self._attr_title = self._domain  # Domain as title (name derived by coordinator)
+        self._attr_title = self._domain
+        ref_type = ReferenceType(entry.data[CONF_REFERENCE_TYPE])
+        ref_value = entry.data[CONF_REFERENCE_VALUE]
+        self._attr_device_info = DeviceInfo(
+            identifiers={
+                (DOMAIN, self._domain),
+                (DOMAIN, f"{ref_type}:{ref_value}"),
+            },
+            name=entry.title,
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url=_build_github_url(entry.data),
+            model=ref_type.value.upper(),
+        )
 
     @property
     def available(self) -> bool:
