@@ -48,7 +48,8 @@ async def async_setup_entry(
     entry: ConfigEntry[IntegrationTesterCoordinator],
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up update entity from a config entry.
+    """
+    Set up update entity from a config entry.
 
     Args:
         hass: Home Assistant instance.
@@ -76,7 +77,8 @@ class IntegrationUpdateEntity(
         coordinator: IntegrationTesterCoordinator,
         entry: ConfigEntry,
     ) -> None:
-        """Initialize the update entity.
+        """
+        Initialize the update entity.
 
         Args:
             coordinator: Data update coordinator.
@@ -137,7 +139,8 @@ class IntegrationUpdateEntity(
     async def async_install(
         self, version: str | None, backup: bool, **kwargs: Any
     ) -> None:
-        """Install an update.
+        """
+        Install an update.
 
         Args:
             version: Version to install (ignored, we always install latest).

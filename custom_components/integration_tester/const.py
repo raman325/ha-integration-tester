@@ -49,7 +49,8 @@ DATA_TARGET_BRANCH: Final = "target_branch"
 
 
 class CoordinatorData(TypedDict, total=False):
-    """Type definition for coordinator data.
+    """
+    Type definition for coordinator data.
 
     Different reference types populate different keys:
     - All types: repo_owner, repo_name, repo_url, is_part_of_ha_core, integration_name,

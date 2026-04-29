@@ -69,7 +69,8 @@ def manifest_json_contents() -> dict[str, Any]:
 
 
 def create_tarball(files: dict[str, str]) -> bytes:
-    """Create a tarball from a dict of path -> content.
+    """
+    Create a tarball from a dict of path -> content.
 
     Args:
         files: Dict mapping archive path to file content.
@@ -134,7 +135,8 @@ def mock_custom_components_dir(hass: HomeAssistant, tmp_path: Path):
 
 
 def create_mock_response(data: Any, status_code: int = 200) -> MagicMock:
-    """Create a mock aiogithubapi response.
+    """
+    Create a mock aiogithubapi response.
 
     Args:
         data: The data to return (aiogithubapi uses .data attribute).
@@ -151,7 +153,8 @@ def create_mock_response(data: Any, status_code: int = 200) -> MagicMock:
 
 
 def dict_to_object(data: dict[str, Any]) -> MagicMock:
-    """Convert a dict to a mock object with attributes.
+    """
+    Convert a dict to a mock object with attributes.
 
     This recursively converts nested dicts to objects.
 
@@ -182,7 +185,8 @@ def dict_to_object(data: dict[str, Any]) -> MagicMock:
 
 @pytest.fixture
 def mock_github_client():
-    """Create a mock GitHub client for testing.
+    """
+    Create a mock GitHub client for testing.
 
     Yields a mock that can be configured with specific responses.
     """
@@ -211,7 +215,8 @@ def create_config_entry(
     unique_id: str | None = None,
     options: dict[str, Any] | None = None,
 ) -> MockConfigEntry:
-    """Create a MockConfigEntry for testing.
+    """
+    Create a MockConfigEntry for testing.
 
     Args:
         hass: Home Assistant instance (unused but kept for API compatibility).
