@@ -23,12 +23,6 @@ lint.select = [
     "UP",  # pyupgrade
     "W",   # pycodestyle warnings
 ]
-lint.extend-select = [
-    # Docstring style: summary on the line *below* opening ``"""``, with
-    # closing ``"""`` on its own line below the body. Single-line docstrings
-    # remain on one line.
-    "D213",
-]
 lint.ignore = [
     "D202",
     "D203",    # 1 blank line required before class docstring (conflicts with D211)
