@@ -213,13 +213,12 @@ class IntegrationTesterGitHubAPI:
             not_found_message=f"Repository {owner}/{repo} not found",
         )
         data = resp.data
+        parent = getattr(data, "parent", None)
 
         # Check if it's a fork of home-assistant/core
-        if data.fork and hasattr(data, "parent") and data.parent:
-            if getattr(data.parent, "full_name", None) == HA_CORE_REPO:
-                return True
-
-        return False
+        return bool(
+            data.fork and parent and getattr(parent, "full_name", None) == HA_CORE_REPO
+        )
 
     async def get_pr_files(self, owner: str, repo: str, pr_number: int) -> list[str]:
         """

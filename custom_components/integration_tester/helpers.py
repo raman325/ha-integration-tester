@@ -228,7 +228,7 @@ def extract_integration(
                     # Extract file
                     with tf.extractfile(member) as src:
                         if src:
-                            with open(target_path, "wb") as dst:
+                            with target_path.open("wb") as dst:
                                 dst.write(src.read())
 
         # Write marker file

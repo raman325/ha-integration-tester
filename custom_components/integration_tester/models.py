@@ -72,7 +72,8 @@ class IntegrationInfo:
 
 @dataclass(kw_only=True)
 class ResolvedReference(ParsedGitHubURL):
-    """Resolved git reference with all context needed for the config flow.
+    """
+    Resolved git reference with all context needed for the config flow.
 
     Inherits from ParsedGitHubURL and adds the resolved commit SHA and
     type-specific metadata. After resolution, reference_value is always set

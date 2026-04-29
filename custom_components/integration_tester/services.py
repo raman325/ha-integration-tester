@@ -81,7 +81,8 @@ def _find_entry_by_criteria(
     owner_repo: str | None = None,
     entry_id: str | None = None,
 ) -> ConfigEntry | None:
-    """Find a config entry matching the given criteria.
+    """
+    Find a config entry matching the given criteria.
 
     Only one criteria should be provided (enforced by vol.Exclusive in schema).
     Raises HomeAssistantError if multiple entries match (ambiguous criteria).

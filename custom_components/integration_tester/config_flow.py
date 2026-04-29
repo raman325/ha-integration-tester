@@ -98,7 +98,8 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         return vol.Schema(schema)
 
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
-        """Handle import from service call.
+        """
+        Handle import from service call.
 
         Receives: {"url": "...", "overwrite": bool, "restart": bool, "domain": str|None}
         """
@@ -409,8 +410,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if user_input.get("confirm"):
                 return await self._create_entry()
-            else:
-                return self.async_abort(reason="user_cancelled")
+            return self.async_abort(reason="user_cancelled")
 
         return self.async_show_form(
             step_id="confirm_overwrite",
@@ -430,8 +430,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             if user_input.get("confirm"):
                 self._overwrite_existing = True
                 return await self._remove_existing_and_create()
-            else:
-                return self.async_abort(reason="user_cancelled")
+            return self.async_abort(reason="user_cancelled")
 
         # Get info about existing entry for display
         existing_url = ""
