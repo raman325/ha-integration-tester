@@ -250,11 +250,11 @@ class TestIsCoreOrFork:
     async def test_is_core_fork(self, api_and_client):
         """Test detection of HA core fork via parent check."""
         api, mock_client = api_and_client
-        mock_repo = MagicMock()
-        mock_repo.data.fork = True
-        mock_repo.data.parent = MagicMock()
-        mock_repo.data.parent.full_name = "home-assistant/core"
-        mock_client.repos.get = AsyncMock(return_value=mock_repo)
+        mock_client.generic = AsyncMock(
+            return_value=create_mock_response(
+                {"fork": True, "parent": {"full_name": "home-assistant/core"}}
+            )
+        )
 
         result = await api.is_part_of_ha_core("user", "my-fork")
 
@@ -263,9 +263,9 @@ class TestIsCoreOrFork:
     async def test_is_not_core_or_fork(self, api_and_client):
         """Test non-core repository."""
         api, mock_client = api_and_client
-        mock_repo = MagicMock()
-        mock_repo.data.fork = False
-        mock_client.repos.get = AsyncMock(return_value=mock_repo)
+        mock_client.generic = AsyncMock(
+            return_value=create_mock_response({"fork": False, "parent": None})
+        )
 
         result = await api.is_part_of_ha_core("user", "custom-integration")
 
@@ -274,7 +274,7 @@ class TestIsCoreOrFork:
     async def test_is_part_of_ha_core_rate_limit(self, api_and_client):
         """Test rate limit error."""
         api, mock_client = api_and_client
-        mock_client.repos.get = AsyncMock(
+        mock_client.generic = AsyncMock(
             side_effect=GitHubRatelimitException("Rate limited")
         )
 
@@ -402,11 +402,12 @@ class TestResolveReference:
             is_part_of_ha_core=False,
         )
 
-        # Mock is_part_of_ha_core to return False (not a core repo)
-        mock_repo = MagicMock()
-        mock_repo.data.fork = False
-        mock_client.repos.get = AsyncMock(return_value=mock_repo)
-        mock_client.generic = AsyncMock(return_value=create_mock_response(pr_response))
+        mock_client.generic = AsyncMock(
+            side_effect=[
+                create_mock_response({"fork": False, "parent": None}),
+                create_mock_response(pr_response),
+            ]
+        )
 
         result = await api.resolve_reference(parsed_url)
 
@@ -427,11 +428,11 @@ class TestResolveReference:
             is_part_of_ha_core=False,
         )
 
-        mock_repo = MagicMock()
-        mock_repo.data.fork = False
-        mock_client.repos.get = AsyncMock(return_value=mock_repo)
         mock_client.generic = AsyncMock(
-            return_value=create_mock_response(branch_response)
+            side_effect=[
+                create_mock_response({"fork": False, "parent": None}),
+                create_mock_response(branch_response),
+            ]
         )
 
         result = await api.resolve_reference(parsed_url)
@@ -453,13 +454,14 @@ class TestResolveReference:
             is_part_of_ha_core=False,
         )
 
-        # Mock for is_part_of_ha_core and get_default_branch
-        mock_repo = MagicMock()
-        mock_repo.data.fork = False
-        mock_repo.data.default_branch = "main"
-        mock_client.repos.get = AsyncMock(return_value=mock_repo)
+        mock_default_branch = MagicMock()
+        mock_default_branch.data.default_branch = "main"
+        mock_client.repos.get = AsyncMock(return_value=mock_default_branch)
         mock_client.generic = AsyncMock(
-            return_value=create_mock_response(branch_response)
+            side_effect=[
+                create_mock_response({"fork": False, "parent": None}),
+                create_mock_response(branch_response),
+            ]
         )
 
         result = await api.resolve_reference(parsed_url)
@@ -479,11 +481,11 @@ class TestResolveReference:
             is_part_of_ha_core=False,
         )
 
-        mock_repo = MagicMock()
-        mock_repo.data.fork = False
-        mock_client.repos.get = AsyncMock(return_value=mock_repo)
         mock_client.generic = AsyncMock(
-            return_value=create_mock_response(commit_response)
+            side_effect=[
+                create_mock_response({"fork": False, "parent": None}),
+                create_mock_response(commit_response),
+            ]
         )
 
         result = await api.resolve_reference(parsed_url)
