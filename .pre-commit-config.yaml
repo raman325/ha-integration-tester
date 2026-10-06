@@ -4,7 +4,7 @@ ci:
 minimum_pre_commit_version: 3.2.0
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.6
+    rev: v0.16.10
     hooks:
       - id: ruff-check
         files: ^(tests|custom_components)/.+\.py$
@@ -55,14 +55,14 @@ repos:
         args: ["--fix"]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: d93590f5be797aabb60e3b09f2f52dddb02f349f  # frozen: 7.3.0
+    rev: cfbbfdeb2391c14a37e101e92a77f54f329e1726  # frozen: 7.4.1
     hooks:
       - id: flake8
         args: ["--max-line-length=120"]
         additional_dependencies: [Flake8-pyproject]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 7ff8d35ae36a7d2b968f2f90b4c723e292e594ee  # frozen: v2.3.1
+    rev: 2834ec6639549dd6796205c8f011dedcd587288b  # frozen: v2.4.0
     hooks:
       - id: mypy
         files: ^(custom_components)/.+\.py$
