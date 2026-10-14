@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import io
 import json
 import logging
@@ -230,6 +231,16 @@ def extract_integration(
                         if src:
                             with target_path.open("wb") as dst:
                                 dst.write(src.read())
+
+        # Core integrations lack a version key, which HA requires for custom integrations
+        if is_part_of_ha_core:
+            manifest_path = target_dir / "manifest.json"
+            if manifest_path.exists():
+                manifest = json.loads(manifest_path.read_text())
+                if "version" not in manifest:
+                    today = datetime.date.today()
+                    manifest["version"] = f"{today.year}.{today.month}.{today.day}"
+                    manifest_path.write_text(json.dumps(manifest, indent=2))
 
         # Write marker file
         marker_path = target_dir / MARKER_FILE

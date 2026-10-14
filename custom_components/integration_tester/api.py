@@ -209,16 +209,14 @@ class IntegrationTesterGitHubAPI:
             return True
 
         resp = await self._call_api(
-            self._client.repos.get(f"{owner}/{repo}"),
+            self._client.generic(endpoint=f"/repos/{owner}/{repo}"),
             not_found_message=f"Repository {owner}/{repo} not found",
         )
         data = resp.data
-        parent = getattr(data, "parent", None)
+        parent = data.get("parent") or {}
 
         # Check if it's a fork of home-assistant/core
-        return bool(
-            data.fork and parent and getattr(parent, "full_name", None) == HA_CORE_REPO
-        )
+        return bool(data.get("fork") and parent.get("full_name") == HA_CORE_REPO)
 
     async def get_pr_files(self, owner: str, repo: str, pr_number: int) -> list[str]:
         """
