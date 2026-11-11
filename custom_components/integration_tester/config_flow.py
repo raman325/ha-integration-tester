@@ -41,6 +41,7 @@ from .const import (
 from .exceptions import (
     GitHubAPIError,
     GitHubAuthError,
+    IntegrationNotFoundError,
     InvalidGitHubURLError,
     ManifestNotFoundError,
 )
@@ -650,7 +651,7 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
             elif same_type and value == current_value:
                 return self.async_abort(reason="no_changes")
             else:
-                info = await self._async_validate_target(
+                validated = await self._async_validate_target(
                     entry,
                     api,
                     ref_type,
@@ -658,8 +659,9 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors=errors,
                     placeholders=placeholders,
                 )
-                if info:
-                    return self._async_apply_target(entry, info, ref_type, value)
+                if validated:
+                    info, stored_value = validated
+                    return self._async_apply_target(entry, info, ref_type, stored_value)
         elif current_value not in listed_values:
             custom_default = current_value
 
@@ -703,8 +705,14 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
         *,
         errors: dict[str, str],
         placeholders: dict[str, str],
-    ) -> IntegrationInfo | None:
-        """Check the target exists and provides the entry's integration."""
+    ) -> tuple[IntegrationInfo, str] | None:
+        """
+        Check the target exists and provides the entry's integration.
+
+        Returns the integration info and the value to store for the target. Commit
+        targets are stored as the resolved full SHA so they stay pinned even if
+        a branch or tag name was entered.
+        """
         domain = entry.data[CONF_INTEGRATION_DOMAIN]
         is_core = entry.data.get(CONF_IS_PART_OF_HA_CORE, False)
         parsed = parse_github_url(entry.data[CONF_URL])
@@ -718,6 +726,9 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                     is_part_of_ha_core=is_core,
                 )
             )
+            stored_value = (
+                resolved.commit_sha if ref_type == ReferenceType.COMMIT else value
+            )
             if is_core:
                 integrations = await api.get_core_pr_integrations(
                     resolved.owner, resolved.repo, int(value)
@@ -726,19 +737,26 @@ class IntegrationTesterConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["base"] = "integration_not_in_pr"
                     placeholders["integrations"] = ", ".join(integrations)
                     return None
-                return await get_core_integration_info(
+                info = await get_core_integration_info(
                     api, resolved.owner, resolved.repo, domain, resolved.commit_sha
                 )
+                return info, stored_value
             info = await validate_custom_integration(
-                api, resolved.owner, resolved.repo, resolved.commit_sha
+                api,
+                resolved.owner,
+                resolved.repo,
+                resolved.commit_sha,
+                expected_domain=domain,
             )
             if info.domain != domain:
                 errors["base"] = "domain_mismatch"
                 placeholders["new_domain"] = info.domain
                 return None
-            return info
+            return info, stored_value
         except ManifestNotFoundError:
             errors["base"] = "manifest_not_found"
+        except IntegrationNotFoundError:
+            errors["base"] = "integration_not_found"
         except GitHubAPIError as err:
             _LOGGER.error("GitHub API error during reconfigure: %s", err)
             errors["base"] = "github_error"

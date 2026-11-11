@@ -103,10 +103,16 @@ def parse_github_url(url: str) -> ParsedGitHubURL:
 
 
 async def validate_custom_integration(
-    api: IntegrationTesterGitHubAPI, owner: str, repo: str, ref: str | None = None
+    api: IntegrationTesterGitHubAPI,
+    owner: str,
+    repo: str,
+    ref: str | None = None,
+    expected_domain: str | None = None,
 ) -> IntegrationInfo:
     """
     Validate that a repository contains a custom integration.
+
+    If expected_domain is given, only that integration's directory is considered.
 
     Raises:
         ManifestNotFoundError: If manifest.json is not found.
@@ -122,6 +128,8 @@ async def validate_custom_integration(
         for item in contents:
             if item.get("type") == "dir":
                 domain = item["name"]
+                if expected_domain is not None and domain != expected_domain:
+                    continue
                 manifest_path = f"custom_components/{domain}/manifest.json"
                 try:
                     manifest_content = await api.get_file_content(

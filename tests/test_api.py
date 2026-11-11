@@ -242,7 +242,90 @@ class TestListRecentReferences:
 
         assert [o.value for o in result] == ["new", "mid"]
         assert result[0].label == "new (2026-03-01)"
-        assert mock_client.graphql.call_args.kwargs["variables"]["limit"] == 2
+        variables = mock_client.graphql.call_args.kwargs["variables"]
+        assert variables["limit"] == 100
+        assert variables["after"] is None
+
+    async def test_branches_paginated_before_sorting(self, api_and_client):
+        """Test all pages are fetched so the newest branches win across pages."""
+        api, mock_client = api_and_client
+
+        def page(nodes, end_cursor):
+            return _awaitable(
+                create_mock_response(
+                    {
+                        "data": {
+                            "repository": {
+                                "refs": {
+                                    "nodes": nodes,
+                                    "pageInfo": {
+                                        "hasNextPage": end_cursor is not None,
+                                        "endCursor": end_cursor,
+                                    },
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+
+        mock_client.graphql = MagicMock(
+            side_effect=[
+                page(
+                    [
+                        {"name": "a", "target": {"committedDate": "2025-01-01T00:00Z"}},
+                        {"name": "b", "target": {}},
+                    ],
+                    "cursor1",
+                ),
+                page(
+                    [{"name": "z", "target": {"committedDate": "2026-05-01T00:00Z"}}],
+                    None,
+                ),
+            ]
+        )
+
+        result = await api.list_recent_references(
+            "owner", "repo", ReferenceType.BRANCH, limit=3
+        )
+
+        assert [(o.value, o.label) for o in result] == [
+            ("z", "z (2026-05-01)"),
+            ("a", "a (2025-01-01)"),
+            ("b", "b (unknown)"),
+        ]
+        afters = [
+            c.kwargs["variables"]["after"] for c in mock_client.graphql.call_args_list
+        ]
+        assert afters == [None, "cursor1"]
+
+    async def test_branches_page_limit(self, api_and_client):
+        """Test paging stops after the maximum number of pages."""
+        api, mock_client = api_and_client
+        mock_client.graphql = MagicMock(
+            side_effect=lambda **_: _awaitable(
+                create_mock_response(
+                    {
+                        "data": {
+                            "repository": {
+                                "refs": {
+                                    "nodes": [],
+                                    "pageInfo": {
+                                        "hasNextPage": True,
+                                        "endCursor": "next",
+                                    },
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+        )
+
+        result = await api.list_recent_references("owner", "repo", ReferenceType.BRANCH)
+
+        assert result == []
+        assert mock_client.graphql.call_count == 5
 
     @pytest.mark.parametrize(
         "payload",

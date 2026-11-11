@@ -62,6 +62,7 @@
       "invalid_reference": "Invalid target. Pull requests must be a positive number, and the target cannot be empty.",
       "integration_not_in_pr": "This pull request does not modify `{domain}`. Integrations modified: {integrations}.",
       "domain_mismatch": "This target provides the integration `{new_domain}` instead of `{domain}`. To track a different integration, add a new entry.",
+      "integration_not_found": "This target does not contain the integration `{domain}`; its manifest may have been removed.",
       "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
       "invalid_token": "Invalid GitHub token. Please check that the token is correct and has not expired.",
       "github_error": "GitHub API error: {error}",

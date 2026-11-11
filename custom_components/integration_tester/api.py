@@ -37,15 +37,14 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-# The REST branches endpoint has no commit dates, so use GraphQL to order by them
+# The REST branches endpoint has no commit dates, so use GraphQL. GitHub can only
+# order refs by commit date for tags, so branches are paged and sorted locally.
+_BRANCHES_PAGE_SIZE = 100
+_BRANCHES_MAX_PAGES = 5
 _RECENT_BRANCHES_QUERY = """
-query($owner: String!, $name: String!, $limit: Int!) {
+query($owner: String!, $name: String!, $limit: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
-    refs(
-      refPrefix: "refs/heads/"
-      first: $limit
-      orderBy: {field: TAG_COMMIT_DATE, direction: DESC}
-    ) {
+    refs(refPrefix: "refs/heads/", first: $limit, after: $after) {
       nodes {
         name
         target {
@@ -53,6 +52,10 @@ query($owner: String!, $name: String!, $limit: Int!) {
             committedDate
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -230,7 +233,8 @@ class IntegrationTesterGitHubAPI:
         List the most recently changed branches, open PRs or commits.
 
         Commits are taken from the default branch. Results are sorted by last
-        change date, newest first.
+        change date, newest first. Branches are paged and sorted locally, looking
+        at no more than the first 500 branches of very large repositories.
 
         Raises:
             GitHubRateLimitError: If rate limited.
@@ -238,24 +242,41 @@ class IntegrationTesterGitHubAPI:
 
         """
         if ref_type == ReferenceType.BRANCH:
-            response = await self._call_api(
-                self._client.graphql(
-                    query=_RECENT_BRANCHES_QUERY,
-                    variables={"owner": owner, "name": repo, "limit": limit},
-                ),
-                not_found_message=f"Repository {owner}/{repo} not found",
-            )
-            data = response.data or {}
-            if data.get("errors") or not data.get("data", {}).get("repository"):
-                raise GitHubAPIError(f"Could not list branches of {owner}/{repo}")
-            nodes = data["data"]["repository"]["refs"]["nodes"]
-            nodes = sorted(
-                nodes, key=lambda n: n["target"].get("committedDate", ""), reverse=True
+            nodes: list[dict[str, Any]] = []
+            after: str | None = None
+            for _ in range(_BRANCHES_MAX_PAGES):
+                response = await self._call_api(
+                    self._client.graphql(
+                        query=_RECENT_BRANCHES_QUERY,
+                        variables={
+                            "owner": owner,
+                            "name": repo,
+                            "limit": _BRANCHES_PAGE_SIZE,
+                            "after": after,
+                        },
+                    ),
+                    not_found_message=f"Repository {owner}/{repo} not found",
+                )
+                data = response.data or {}
+                if data.get("errors") or not data.get("data", {}).get("repository"):
+                    raise GitHubAPIError(f"Could not list branches of {owner}/{repo}")
+                refs = data["data"]["repository"]["refs"]
+                nodes.extend(refs["nodes"])
+                page_info = refs.get("pageInfo") or {}
+                if not page_info.get("hasNextPage"):
+                    break
+                after = page_info["endCursor"]
+            nodes.sort(
+                key=lambda n: (n.get("target") or {}).get("committedDate") or "",
+                reverse=True,
             )
             return [
                 ReferenceOption(
                     value=node["name"],
-                    label=f"{node['name']} ({_short_date(node['target'].get('committedDate'))})",
+                    label=(
+                        f"{node['name']} "
+                        f"({_short_date((node.get('target') or {}).get('committedDate'))})"
+                    ),
                 )
                 for node in nodes[:limit]
             ]

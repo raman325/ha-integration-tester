@@ -1224,7 +1224,10 @@ class TestReconfigureFlow:
         with patch(
             "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
         ) as mock_api_cls:
-            _mock_reconfigure_api(mock_api_cls, domain="other_domain")
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "other_domain", "name": "Other"}'
+            )
 
             result = await _configure(hass, entry, "branch", custom="dev")
 
@@ -1262,7 +1265,7 @@ class TestReconfigureFlow:
         assert result["description_placeholders"]["error"] == "boom"
 
     async def test_reconfigure_to_commit(self, hass: HomeAssistant):
-        """Test switching to a commit uses the short SHA in the title."""
+        """Test a commit target is pinned to the resolved full SHA."""
         entry = _reconfigure_entry(hass)
 
         with (
@@ -1276,11 +1279,67 @@ class TestReconfigureFlow:
         ):
             _mock_reconfigure_api(mock_api_cls)
 
-            result = await _configure(hass, entry, "commit", custom="abcdef1234567890")
+            result = await _configure(hass, entry, "commit", custom="main")
             await hass.async_block_till_done()
 
         assert result["reason"] == "reconfigure_successful"
-        assert entry.title == "Lock Code Manager (commit: abcdef1)"
+        assert entry.data[CONF_REFERENCE_VALUE] == (
+            "e937d69acdeab0dc5eba5dbbc3418d78f4459533"
+        )
+        assert entry.title == "Lock Code Manager (commit: e937d69)"
+
+    async def test_reconfigure_core_integration_removed(self, hass: HomeAssistant):
+        """Test a core PR deleting the manifest shows an error."""
+        entry = _reconfigure_entry(hass, is_core=True)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["lock_code_manager"]
+            )
+            mock_api.get_file_content = AsyncMock(side_effect=GitHubAPIError("gone"))
+
+            result = await _configure(hass, entry, "pr", custom="2")
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {"base": "integration_not_found"}
+
+    async def test_reconfigure_keeps_domain_with_earlier_sibling(
+        self, hass: HomeAssistant
+    ):
+        """Test the tracked domain is validated even if another sorts first."""
+        entry = _reconfigure_entry(hass)
+
+        with (
+            patch(
+                "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls,
+            patch(
+                "custom_components.integration_tester.async_setup_entry",
+                return_value=True,
+            ),
+        ):
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_directory_contents = AsyncMock(
+                return_value=[
+                    {"name": "aaa_other", "type": "dir"},
+                    {"name": "lock_code_manager", "type": "dir"},
+                ]
+            )
+            mock_api.get_file_content = AsyncMock(
+                side_effect=lambda owner, repo, path, ref=None: (
+                    '{"domain": "lock_code_manager", "name": "Lock Code Manager"}'
+                    if "/lock_code_manager/" in path
+                    else '{"domain": "aaa_other", "name": "Other"}'
+                )
+            )
+
+            result = await _configure(hass, entry, "branch", custom="dev")
+            await hass.async_block_till_done()
+
+        assert result["reason"] == "reconfigure_successful"
 
     async def test_reconfigure_dropdown_selection(self, hass: HomeAssistant):
         """Test a listed entry is offered newest first and takes precedence."""

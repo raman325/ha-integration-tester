@@ -496,8 +496,52 @@ class TestValidateCustomIntegration:
             await validate_custom_integration(mock_api, "owner", "repo", "main")
 
 
+class TestValidateCustomIntegrationExpectedDomain:
+    """Tests for validate_custom_integration with expected_domain."""
+
+    async def test_picks_expected_domain(self):
+        """Test an alphabetically earlier integration is skipped."""
+        mock_api = MagicMock()
+        mock_api.get_directory_contents = AsyncMock(
+            return_value=[
+                {"name": "aaa_other", "type": "dir"},
+                {"name": "readme.md", "type": "file"},
+                {"name": "mine", "type": "dir"},
+            ]
+        )
+        mock_api.get_file_content = AsyncMock(
+            return_value='{"domain": "mine", "name": "Mine"}'
+        )
+
+        result = await validate_custom_integration(
+            mock_api, "owner", "repo", "main", expected_domain="mine"
+        )
+
+        assert result.domain == "mine"
+        mock_api.get_file_content.assert_awaited_once_with(
+            "owner", "repo", "custom_components/mine/manifest.json", "main"
+        )
+
+    async def test_expected_domain_missing(self):
+        """Test a missing expected domain raises ManifestNotFoundError."""
+        mock_api = MagicMock()
+        mock_api.get_directory_contents = AsyncMock(
+            return_value=[{"name": "other", "type": "dir"}]
+        )
+        mock_api.get_file_content = AsyncMock()
+
+        with pytest.raises(ManifestNotFoundError):
+            await validate_custom_integration(
+                mock_api, "owner", "repo", "main", expected_domain="mine"
+            )
+        mock_api.get_file_content.assert_not_awaited()
+
+
 class TestGetCoreIntegrationInfo:
-    """Tests for get_core_integration_info helper."""
+    (
+        """Tests for get_core_integration_info helper."""
+        """Tests for get_core_integration_info helper."""
+    )
 
     async def test_get_core_integration_info_success(self):
         """Test getting core integration info successfully."""
