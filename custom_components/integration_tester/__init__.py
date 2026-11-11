@@ -11,7 +11,7 @@ from homeassistant.components.persistent_notification import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import IntegrationTesterGitHubAPI
@@ -57,6 +57,11 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up Integration Tester integration."""
     hass.data.setdefault(DOMAIN, {})
+
+    registry = ir.async_get(hass)
+    for issue_domain, issue_id in list(registry.issues):
+        if issue_domain == DOMAIN and issue_id.startswith("restart_required_"):
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
 
     # Load token from storage so it's available for all config entries
     if token_from_storage := await async_load_token(hass):

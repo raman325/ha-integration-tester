@@ -9,8 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 
-from custom_components.integration_tester import async_remove_entry
+from custom_components.integration_tester import async_remove_entry, async_setup
 from custom_components.integration_tester.const import (
     CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
@@ -19,6 +20,7 @@ from custom_components.integration_tester.const import (
     CONF_REFERENCE_VALUE,
     CONF_URL,
     DOMAIN,
+    REPAIR_RESTART_REQUIRED,
     ReferenceType,
 )
 
@@ -47,6 +49,41 @@ def mock_config_entry(hass: HomeAssistant):
 
 class TestSetup:
     """Tests for async_setup_entry."""
+
+    async def test_setup_clears_legacy_restart_issues(self, hass: HomeAssistant):
+        """Clear stale restart issues after any restart, preserving other issues."""
+        for issue_domain, issue_id in (
+            (DOMAIN, "restart_required_first"),
+            (DOMAIN, "restart_required_second"),
+            (DOMAIN, "pr_closed_first"),
+            (DOMAIN, REPAIR_RESTART_REQUIRED),
+            ("other_integration", "restart_required_first"),
+        ):
+            ir.async_create_issue(
+                hass,
+                issue_domain,
+                issue_id,
+                is_fixable=False,
+                is_persistent=True,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="restart_required",
+            )
+
+        with (
+            patch(
+                "custom_components.integration_tester.async_load_token",
+                return_value=None,
+            ),
+            patch("custom_components.integration_tester.async_register_services"),
+        ):
+            assert await async_setup(hass, {})
+
+        registry = ir.async_get(hass)
+        assert registry.async_get_issue(DOMAIN, "restart_required_first") is None
+        assert registry.async_get_issue(DOMAIN, "restart_required_second") is None
+        assert registry.async_get_issue(DOMAIN, "pr_closed_first") is not None
+        assert registry.async_get_issue(DOMAIN, REPAIR_RESTART_REQUIRED) is not None
+        assert registry.async_get_issue("other_integration", "restart_required_first")
 
     async def test_setup_entry_with_existing_commit(
         self,

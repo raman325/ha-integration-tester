@@ -91,7 +91,7 @@
   "issues": {
     "restart_required": {
       "title": "Restart Required",
-      "description": "Integration `{domain}` has been installed/updated. Please restart Home Assistant to apply the changes."
+      "description": "Integrations managed by Integration Tester have been installed or updated. Please restart Home Assistant to apply the changes."
     },
     "pr_merged": {
       "title": "PR Merged",

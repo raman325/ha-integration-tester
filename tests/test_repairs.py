@@ -8,6 +8,7 @@ import pytest
 
 from homeassistant.components.repairs import ConfirmRepairFlow
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 
 from custom_components.integration_tester.const import (
     CONF_INTEGRATION_DOMAIN,
@@ -61,6 +62,23 @@ def mock_config_entry(hass: HomeAssistant):
 class TestRepairIssueCreation:
     """Tests for repair issue creation functions."""
 
+    def test_restart_required_issue_is_shared(
+        self, hass: HomeAssistant, mock_config_entry
+    ):
+        """Keep one restart issue for all integrations until HA restarts."""
+        create_restart_required_issue(hass, mock_config_entry, "first_domain")
+        create_restart_required_issue(hass, mock_config_entry, "second_domain")
+
+        registry = ir.async_get(hass)
+        issues = [
+            issue
+            for (issue_domain, _), issue in registry.issues.items()
+            if issue_domain == DOMAIN
+        ]
+        assert len(issues) == 1
+        assert issues[0].issue_id == "restart_required"
+        assert issues[0].is_persistent is False
+
     def test_create_restart_required_issue(
         self, hass: HomeAssistant, mock_config_entry
     ):
@@ -73,7 +91,8 @@ class TestRepairIssueCreation:
         mock_create.assert_called_once()
         call_kwargs = mock_create.call_args.kwargs
         assert call_kwargs["translation_key"] == "restart_required"
-        assert call_kwargs["translation_placeholders"]["domain"] == "test_domain"
+        assert call_kwargs["is_persistent"] is False
+        assert mock_create.call_args.args == (hass, DOMAIN, REPAIR_RESTART_REQUIRED)
 
     def test_remove_restart_required_issue(self, hass: HomeAssistant):
         """Test removing restart required issue."""
@@ -83,8 +102,18 @@ class TestRepairIssueCreation:
             remove_restart_required_issue(hass, "test_domain")
 
         mock_delete.assert_called_once_with(
-            hass, DOMAIN, REPAIR_RESTART_REQUIRED.format(domain="test_domain")
+            hass, DOMAIN, "restart_required_test_domain"
         )
+
+    def test_removing_entry_keeps_shared_restart_issue(
+        self, hass: HomeAssistant, mock_config_entry
+    ):
+        """Removing an entry must not dismiss a pending shared restart."""
+        create_restart_required_issue(hass, mock_config_entry, "test_domain")
+
+        remove_restart_required_issue(hass, "test_domain")
+
+        assert ir.async_get(hass).async_get_issue(DOMAIN, REPAIR_RESTART_REQUIRED)
 
     def test_create_pr_closed_issue_merged(
         self, hass: HomeAssistant, mock_config_entry
@@ -224,9 +253,10 @@ class TestIsRepairIssueAcknowledged:
 class TestAsyncCreateFixFlow:
     """Tests for async_create_fix_flow."""
 
-    async def test_restart_required_flow(self, hass: HomeAssistant):
+    @pytest.mark.parametrize("issue_id", [REPAIR_RESTART_REQUIRED, "restart_required_test"])
+    async def test_restart_required_flow(self, hass: HomeAssistant, issue_id: str):
         """Test creating restart required flow."""
-        flow = await async_create_fix_flow(hass, "restart_required_test", None)
+        flow = await async_create_fix_flow(hass, issue_id, None)
         assert isinstance(flow, RestartRequiredRepairFlow)
 
     async def test_pr_closed_flow(self, hass: HomeAssistant):
