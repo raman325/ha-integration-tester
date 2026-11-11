@@ -34,9 +34,35 @@
         "data": {
           "confirm": "Yes, replace the existing entry"
         }
+      },
+      "reconfigure": {
+        "title": "Change Tracked Target",
+        "description": "Choose whether to track a branch, pull request or commit of `{url}` for `{domain}`.\n\nThe new target must provide the same integration. Home Assistant needs to be restarted after the new version is installed.",
+        "data": {
+          "reference_type": "Target type"
+        },
+        "data_description": {
+          "reference_type": "Whether to track a branch, a pull request or a commit."
+        }
+      },
+      "reconfigure_target": {
+        "title": "Select Target",
+        "description": "Select one of the 20 most recently changed {target_type}s of `{url}`, or choose **(not listed)** and enter it below. A selected entry takes precedence over the text field.",
+        "data": {
+          "reference_choice": "Recent {target_type}s",
+          "custom_reference": "Not listed"
+        },
+        "data_description": {
+          "reference_choice": "Sorted by last change, newest first. Pull requests shown are open ones; commits are from the default branch.",
+          "custom_reference": "Branch name, pull request number or commit SHA. Only used when **(not listed)** is selected."
+        }
       }
     },
     "error": {
+      "invalid_reference": "Invalid target. Pull requests must be a positive number, and the target cannot be empty.",
+      "integration_not_in_pr": "This pull request does not modify `{domain}`. Integrations modified: {integrations}.",
+      "domain_mismatch": "This target provides the integration `{new_domain}` instead of `{domain}`. To track a different integration, add a new entry.",
+      "integration_not_found": "This target does not contain the integration `{domain}`; its manifest may have been removed.",
       "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
       "invalid_token": "Invalid GitHub token. Please check that the token is correct and has not expired.",
       "github_error": "GitHub API error: {error}",
@@ -45,6 +71,8 @@
       "no_integrations_found": "No integrations found in this PR. The PR may not modify any files in homeassistant/components/."
     },
     "abort": {
+      "reconfigure_successful": "The tracked target was changed. The new version will be installed; restart Home Assistant to apply it.",
+      "no_changes": "The target is unchanged.",
       "user_cancelled": "Setup cancelled.",
       "invalid_url": "Invalid GitHub URL. Please enter a valid GitHub repository, branch, PR, or commit URL.",
       "github_error": "GitHub API error: {error}",
@@ -63,13 +91,27 @@
     "step": {
       "init": {
         "title": "Integration Tester Options",
-        "description": "Configure options for tracking `{domain}`.\n\n**Note:** To change the tracked branch, PR, or commit, remove this config entry and add a new one.\n\nThe GitHub token is a global setting shared across all Integration Tester entries.",
+        "description": "Configure options for tracking `{domain}`.\n\n**Note:** To change the tracked branch, PR, or commit, use **Reconfigure** on this entry.\n\nThe GitHub token is a global setting shared across all Integration Tester entries.",
         "data": {
           "github_token": "GitHub Personal Access Token"
         },
         "data_description": {
           "github_token": "Increases API rate limit from 60 to 5,000 requests/hour."
         }
+      }
+    }
+  },
+  "selector": {
+    "reference_choice": {
+      "options": {
+        "_not_listed": "(not listed)"
+      }
+    },
+    "reference_type": {
+      "options": {
+        "branch": "Branch",
+        "pr": "Pull request",
+        "commit": "Commit"
       }
     }
   },

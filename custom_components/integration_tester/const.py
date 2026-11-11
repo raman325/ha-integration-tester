@@ -12,6 +12,9 @@ MARKER_FILE: Final = ".integration_tester"
 HA_CORE_REPO: Final = "home-assistant/core"
 HA_CORE_COMPONENTS_PATH: Final = "homeassistant/components"
 
+# Number of recent branches/PRs/commits offered when reconfiguring
+RECENT_REFERENCES_LIMIT: Final = 20
+
 # Config entry data keys (minimal storage)
 CONF_URL: Final = "url"
 CONF_REFERENCE_TYPE: Final = "reference_type"
@@ -20,6 +23,11 @@ CONF_INTEGRATION_DOMAIN: Final = "integration_domain"
 CONF_INSTALLED_COMMIT: Final = "installed_commit"
 CONF_GITHUB_TOKEN: Final = "github_token"
 CONF_IS_PART_OF_HA_CORE: Final = "is_part_of_ha_core"
+
+# Reconfigure form fields (not stored in the entry)
+CONF_REFERENCE_CHOICE: Final = "reference_choice"
+CONF_CUSTOM_REFERENCE: Final = "custom_reference"
+REFERENCE_NOT_LISTED: Final = "_not_listed"
 
 # Coordinator data keys
 DATA_COORDINATOR: Final = "coordinator"

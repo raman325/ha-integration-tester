@@ -8,6 +8,14 @@ from .const import PRState, ReferenceType
 
 
 @dataclass
+class ReferenceOption:
+    """A selectable branch, pull request or commit."""
+
+    value: str
+    label: str
+
+
+@dataclass
 class ParsedGitHubURL:
     """Parsed GitHub URL information."""
 

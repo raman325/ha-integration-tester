@@ -9,16 +9,25 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.integration_tester.const import (
+    CONF_CUSTOM_REFERENCE,
     CONF_GITHUB_TOKEN,
+    CONF_INSTALLED_COMMIT,
     CONF_INTEGRATION_DOMAIN,
+    CONF_IS_PART_OF_HA_CORE,
+    CONF_REFERENCE_CHOICE,
     CONF_REFERENCE_TYPE,
     CONF_REFERENCE_VALUE,
     CONF_URL,
     DOMAIN,
+    REFERENCE_NOT_LISTED,
     ReferenceType,
 )
 from custom_components.integration_tester.exceptions import GitHubAPIError
-from custom_components.integration_tester.models import PRInfo, ResolvedReference
+from custom_components.integration_tester.models import (
+    PRInfo,
+    ReferenceOption,
+    ResolvedReference,
+)
 
 from .conftest import create_config_entry
 
@@ -1031,3 +1040,413 @@ class TestOptionsFlow:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         # Token should be stored in hass.data
         assert hass.data[DOMAIN][CONF_GITHUB_TOKEN] == "new_test_token"
+
+
+def _reconfigure_entry(
+    hass: HomeAssistant, *, is_core: bool = False, ref_type=ReferenceType.PR
+):
+    """Create and register an entry to reconfigure."""
+    entry = create_config_entry(
+        hass,
+        domain=DOMAIN,
+        title="Lock Code Manager (PR #1)",
+        data={
+            CONF_INTEGRATION_DOMAIN: "lock_code_manager",
+            CONF_URL: "https://github.com/raman325/lock_code_manager",
+            CONF_REFERENCE_TYPE: ref_type.value,
+            CONF_REFERENCE_VALUE: "1",
+            CONF_INSTALLED_COMMIT: "abc1234",
+            CONF_IS_PART_OF_HA_CORE: is_core,
+        },
+        unique_id="lock_code_manager",
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+def _mock_reconfigure_api(mock_api_cls, *, domain: str = "lock_code_manager"):
+    """Configure a mocked API for the reconfigure flow."""
+    mock_api = MagicMock()
+    mock_api_cls.return_value = mock_api
+    mock_api.resolve_reference = AsyncMock(
+        return_value=create_resolved_reference(
+            reference_type=ReferenceType.BRANCH, reference_value="dev"
+        )
+    )
+    mock_api.get_directory_contents = AsyncMock(
+        return_value=[{"name": domain, "type": "dir"}]
+    )
+    mock_api.get_file_content = AsyncMock(
+        return_value=f'{{"domain": "{domain}", "name": "Lock Code Manager"}}'
+    )
+    mock_api.list_recent_references = AsyncMock(
+        return_value=[
+            ReferenceOption("main", "main (2026-01-02)"),
+            ReferenceOption("feature", "feature (2026-01-01)"),
+        ]
+    )
+    return mock_api
+
+
+async def _configure(
+    hass: HomeAssistant,
+    entry,
+    ref_type: str,
+    choice: str = REFERENCE_NOT_LISTED,
+    custom: str | None = None,
+):
+    """Run both reconfigure pages and return the last result."""
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["step_id"] == "reconfigure"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REFERENCE_TYPE: ref_type}
+    )
+    if (
+        result["type"] != FlowResultType.FORM
+        or result["step_id"] != "reconfigure_target"
+    ):
+        return result
+    user_input = {CONF_REFERENCE_CHOICE: choice}
+    if custom is not None:
+        user_input[CONF_CUSTOM_REFERENCE] = custom
+    return await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+
+
+class TestReconfigureFlow:
+    """Tests for the reconfigure flow."""
+
+    async def test_reconfigure_to_branch(self, hass: HomeAssistant):
+        """Test switching to a branch updates the entry and clears installed commit."""
+        entry = _reconfigure_entry(hass)
+
+        with (
+            patch(
+                "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls,
+            patch(
+                "custom_components.integration_tester.async_setup_entry",
+                return_value=True,
+            ),
+            patch(
+                "custom_components.integration_tester.config_flow.remove_pr_closed_issue"
+            ) as mock_remove_issue,
+        ):
+            _mock_reconfigure_api(mock_api_cls)
+
+            result = await _configure(hass, entry, "branch", custom=" dev ")
+            await hass.async_block_till_done()
+
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "reconfigure_successful"
+        mock_remove_issue.assert_called_once()
+        assert entry.data[CONF_REFERENCE_TYPE] == "branch"
+        assert entry.data[CONF_REFERENCE_VALUE] == "dev"
+        assert CONF_INSTALLED_COMMIT not in entry.data
+        assert entry.data[CONF_URL] == "https://github.com/raman325/lock_code_manager"
+        assert entry.title == "Lock Code Manager (branch: dev)"
+
+    async def test_reconfigure_core_pr(self, hass: HomeAssistant):
+        """Test switching a core entry to another PR touching the same domain."""
+        entry = _reconfigure_entry(hass, is_core=True)
+
+        with (
+            patch(
+                "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls,
+            patch(
+                "custom_components.integration_tester.async_setup_entry",
+                return_value=True,
+            ),
+        ):
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["lock_code_manager", "other"]
+            )
+
+            result = await _configure(hass, entry, "pr", custom="2")
+            await hass.async_block_till_done()
+
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.data[CONF_REFERENCE_VALUE] == "2"
+        assert entry.title == "Lock Code Manager (PR #2)"
+
+    async def test_reconfigure_core_pr_missing_integration(self, hass: HomeAssistant):
+        """Test a core PR that doesn't modify the integration is rejected."""
+        entry = _reconfigure_entry(hass, is_core=True)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_core_pr_integrations = AsyncMock(return_value=["other"])
+
+            result = await _configure(hass, entry, "pr", custom="2")
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {"base": "integration_not_in_pr"}
+
+    async def test_reconfigure_core_requires_pr(self, hass: HomeAssistant):
+        """Test core entries cannot be switched to a branch or commit."""
+        entry = _reconfigure_entry(hass, is_core=True)
+
+        result = await _configure(hass, entry, "branch")
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {CONF_REFERENCE_TYPE: "core_requires_pr"}
+
+    async def test_reconfigure_invalid_reference(self, hass: HomeAssistant):
+        """Test non-numeric PR numbers are rejected."""
+        entry = _reconfigure_entry(hass)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            for value in ("abc", "0", ""):
+                result = await _configure(hass, entry, "pr", custom=value)
+                assert result["type"] == FlowResultType.FORM
+                assert result["errors"] == {CONF_CUSTOM_REFERENCE: "invalid_reference"}
+            mock_api.resolve_reference.assert_not_called()
+
+    async def test_reconfigure_no_changes(self, hass: HomeAssistant):
+        """Test submitting the current target aborts."""
+        entry = _reconfigure_entry(hass)
+
+        result = await _configure(hass, entry, "pr", custom="1")
+
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "no_changes"
+
+    async def test_reconfigure_domain_mismatch(self, hass: HomeAssistant):
+        """Test a target providing a different domain is rejected."""
+        entry = _reconfigure_entry(hass)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_file_content = AsyncMock(
+                return_value='{"domain": "other_domain", "name": "Other"}'
+            )
+
+            result = await _configure(hass, entry, "branch", custom="dev")
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {"base": "domain_mismatch"}
+
+    async def test_reconfigure_manifest_not_found(self, hass: HomeAssistant):
+        """Test a target without a manifest is rejected."""
+        entry = _reconfigure_entry(hass)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_directory_contents = AsyncMock(return_value=[])
+
+            result = await _configure(hass, entry, "branch", custom="dev")
+
+        assert result["errors"] == {"base": "manifest_not_found"}
+
+    async def test_reconfigure_github_error(self, hass: HomeAssistant):
+        """Test GitHub API errors are surfaced on the form."""
+        entry = _reconfigure_entry(hass)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.resolve_reference = AsyncMock(side_effect=GitHubAPIError("boom"))
+
+            result = await _configure(hass, entry, "commit", custom="abc123")
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {"base": "github_error"}
+        assert result["description_placeholders"]["error"] == "boom"
+
+    async def test_reconfigure_to_commit(self, hass: HomeAssistant):
+        """Test a commit target is pinned to the resolved full SHA."""
+        entry = _reconfigure_entry(hass)
+
+        with (
+            patch(
+                "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls,
+            patch(
+                "custom_components.integration_tester.async_setup_entry",
+                return_value=True,
+            ),
+        ):
+            _mock_reconfigure_api(mock_api_cls)
+
+            result = await _configure(hass, entry, "commit", custom="main")
+            await hass.async_block_till_done()
+
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.data[CONF_REFERENCE_VALUE] == (
+            "e937d69acdeab0dc5eba5dbbc3418d78f4459533"
+        )
+        assert entry.title == "Lock Code Manager (commit: e937d69)"
+
+    async def test_reconfigure_core_integration_removed(self, hass: HomeAssistant):
+        """Test a core PR deleting the manifest shows an error."""
+        entry = _reconfigure_entry(hass, is_core=True)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_core_pr_integrations = AsyncMock(
+                return_value=["lock_code_manager"]
+            )
+            mock_api.get_file_content = AsyncMock(side_effect=GitHubAPIError("gone"))
+
+            result = await _configure(hass, entry, "pr", custom="2")
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {"base": "integration_not_found"}
+
+    async def test_reconfigure_keeps_domain_with_earlier_sibling(
+        self, hass: HomeAssistant
+    ):
+        """Test the tracked domain is validated even if another sorts first."""
+        entry = _reconfigure_entry(hass)
+
+        with (
+            patch(
+                "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls,
+            patch(
+                "custom_components.integration_tester.async_setup_entry",
+                return_value=True,
+            ),
+        ):
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.get_directory_contents = AsyncMock(
+                return_value=[
+                    {"name": "aaa_other", "type": "dir"},
+                    {"name": "lock_code_manager", "type": "dir"},
+                ]
+            )
+            mock_api.get_file_content = AsyncMock(
+                side_effect=lambda owner, repo, path, ref=None: (
+                    '{"domain": "lock_code_manager", "name": "Lock Code Manager"}'
+                    if "/lock_code_manager/" in path
+                    else '{"domain": "aaa_other", "name": "Other"}'
+                )
+            )
+
+            result = await _configure(hass, entry, "branch", custom="dev")
+            await hass.async_block_till_done()
+
+        assert result["reason"] == "reconfigure_successful"
+
+    async def test_reconfigure_dropdown_selection(self, hass: HomeAssistant):
+        """Test a listed entry is offered newest first and takes precedence."""
+        entry = _reconfigure_entry(hass)
+
+        with (
+            patch(
+                "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+            ) as mock_api_cls,
+            patch(
+                "custom_components.integration_tester.async_setup_entry",
+                return_value=True,
+            ),
+        ):
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+
+            result = await entry.start_reconfigure_flow(hass)
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {CONF_REFERENCE_TYPE: "branch"}
+            )
+            assert result["step_id"] == "reconfigure_target"
+            assert result["description_placeholders"]["target_type"] == "branch"
+            selector = result["data_schema"].schema[CONF_REFERENCE_CHOICE]
+            assert [o["value"] for o in selector.config["options"]] == [
+                "main",
+                "feature",
+                REFERENCE_NOT_LISTED,
+            ]
+            mock_api.list_recent_references.assert_awaited_once_with(
+                "raman325", "lock_code_manager", ReferenceType.BRANCH
+            )
+
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {CONF_REFERENCE_CHOICE: "feature", CONF_CUSTOM_REFERENCE: "ignored"},
+            )
+            await hass.async_block_till_done()
+
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.data[CONF_REFERENCE_VALUE] == "feature"
+        assert mock_api.resolve_reference.await_args.args[0].reference_value == (
+            "feature"
+        )
+
+    async def test_reconfigure_defaults_to_current_target(self, hass: HomeAssistant):
+        """Test the current target is preselected, or prefilled when not listed."""
+        entry = _reconfigure_entry(hass, ref_type=ReferenceType.BRANCH)
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_REFERENCE_VALUE: "main"}
+        )
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            _mock_reconfigure_api(mock_api_cls)
+
+            result = await entry.start_reconfigure_flow(hass)
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {CONF_REFERENCE_TYPE: "branch"}
+            )
+            choice = next(
+                k
+                for k in result["data_schema"].schema
+                if str(k) == CONF_REFERENCE_CHOICE
+            )
+            assert choice.default() == "main"
+
+            # Current target not among the recent entries
+            hass.config_entries.async_update_entry(
+                entry, data={**entry.data, CONF_REFERENCE_VALUE: "old-branch"}
+            )
+            result = await entry.start_reconfigure_flow(hass)
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {CONF_REFERENCE_TYPE: "branch"}
+            )
+            custom = next(
+                k
+                for k in result["data_schema"].schema
+                if str(k) == CONF_CUSTOM_REFERENCE
+            )
+            assert custom.description == {"suggested_value": "old-branch"}
+            choice = next(
+                k
+                for k in result["data_schema"].schema
+                if str(k) == CONF_REFERENCE_CHOICE
+            )
+            assert choice.default() == REFERENCE_NOT_LISTED
+
+    async def test_reconfigure_listing_failure(self, hass: HomeAssistant):
+        """Test the form still works with only the text field if listing fails."""
+        entry = _reconfigure_entry(hass)
+
+        with patch(
+            "custom_components.integration_tester.config_flow.IntegrationTesterGitHubAPI"
+        ) as mock_api_cls:
+            mock_api = _mock_reconfigure_api(mock_api_cls)
+            mock_api.list_recent_references = AsyncMock(
+                side_effect=GitHubAPIError("nope")
+            )
+
+            result = await entry.start_reconfigure_flow(hass)
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {CONF_REFERENCE_TYPE: "branch"}
+            )
+
+        assert result["step_id"] == "reconfigure_target"
+        selector = result["data_schema"].schema[CONF_REFERENCE_CHOICE]
+        assert [o["value"] for o in selector.config["options"]] == [
+            REFERENCE_NOT_LISTED
+        ]

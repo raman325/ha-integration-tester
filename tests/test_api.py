@@ -31,6 +31,11 @@ def mock_session():
     return MagicMock()
 
 
+async def _awaitable(value: Any) -> Any:
+    """Return value from a coroutine (for mocks of non-async client calls)."""
+    return value
+
+
 @pytest.fixture
 def api_and_client(mock_session):
     """Create an API client instance with mocked GitHubAPI, returning both."""
@@ -210,6 +215,188 @@ class TestGetBranchInfo:
 
         with pytest.raises(GitHubAPIError, match="Branch.*not found"):
             await api.get_branch_info("owner", "repo", "nonexistent")
+
+
+class TestListRecentReferences:
+    """Tests for list_recent_references."""
+
+    async def test_branches_sorted_newest_first(self, api_and_client):
+        """Test branches are ordered by commit date and limited."""
+        api, mock_client = api_and_client
+        nodes = [
+            {"name": "old", "target": {"committedDate": "2025-01-01T00:00:00Z"}},
+            {"name": "new", "target": {"committedDate": "2026-03-01T10:00:00Z"}},
+            {"name": "mid", "target": {"committedDate": "2025-06-01T00:00:00Z"}},
+        ]
+        mock_client.graphql = MagicMock(
+            return_value=_awaitable(
+                create_mock_response(
+                    {"data": {"repository": {"refs": {"nodes": nodes}}}}
+                )
+            )
+        )
+
+        result = await api.list_recent_references(
+            "owner", "repo", ReferenceType.BRANCH, limit=2
+        )
+
+        assert [o.value for o in result] == ["new", "mid"]
+        assert result[0].label == "new (2026-03-01)"
+        variables = mock_client.graphql.call_args.kwargs["variables"]
+        assert variables["limit"] == 100
+        assert variables["after"] is None
+
+    async def test_branches_paginated_before_sorting(self, api_and_client):
+        """Test all pages are fetched so the newest branches win across pages."""
+        api, mock_client = api_and_client
+
+        def page(nodes, end_cursor):
+            return _awaitable(
+                create_mock_response(
+                    {
+                        "data": {
+                            "repository": {
+                                "refs": {
+                                    "nodes": nodes,
+                                    "pageInfo": {
+                                        "hasNextPage": end_cursor is not None,
+                                        "endCursor": end_cursor,
+                                    },
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+
+        mock_client.graphql = MagicMock(
+            side_effect=[
+                page(
+                    [
+                        {"name": "a", "target": {"committedDate": "2025-01-01T00:00Z"}},
+                        {"name": "b", "target": {}},
+                    ],
+                    "cursor1",
+                ),
+                page(
+                    [{"name": "z", "target": {"committedDate": "2026-05-01T00:00Z"}}],
+                    None,
+                ),
+            ]
+        )
+
+        result = await api.list_recent_references(
+            "owner", "repo", ReferenceType.BRANCH, limit=3
+        )
+
+        assert [(o.value, o.label) for o in result] == [
+            ("z", "z (2026-05-01)"),
+            ("a", "a (2025-01-01)"),
+            ("b", "b (unknown)"),
+        ]
+        afters = [
+            c.kwargs["variables"]["after"] for c in mock_client.graphql.call_args_list
+        ]
+        assert afters == [None, "cursor1"]
+
+    async def test_branches_page_limit(self, api_and_client):
+        """Test paging stops after the maximum number of pages."""
+        api, mock_client = api_and_client
+        mock_client.graphql = MagicMock(
+            side_effect=lambda **_: _awaitable(
+                create_mock_response(
+                    {
+                        "data": {
+                            "repository": {
+                                "refs": {
+                                    "nodes": [],
+                                    "pageInfo": {
+                                        "hasNextPage": True,
+                                        "endCursor": "next",
+                                    },
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+        )
+
+        result = await api.list_recent_references("owner", "repo", ReferenceType.BRANCH)
+
+        assert result == []
+        assert mock_client.graphql.call_count == 5
+
+    @pytest.mark.parametrize(
+        "payload",
+        [{"errors": [{"message": "bad"}]}, {"data": {"repository": None}}],
+    )
+    async def test_branches_graphql_error(self, api_and_client, payload):
+        """Test GraphQL level errors raise GitHubAPIError."""
+        api, mock_client = api_and_client
+        mock_client.graphql = MagicMock(
+            return_value=_awaitable(create_mock_response(payload))
+        )
+
+        with pytest.raises(GitHubAPIError, match="Could not list branches"):
+            await api.list_recent_references("owner", "repo", ReferenceType.BRANCH)
+
+    async def test_pull_requests(self, api_and_client):
+        """Test open PRs are requested sorted by update date."""
+        api, mock_client = api_and_client
+        mock_client.generic = AsyncMock(
+            return_value=create_mock_response(
+                [
+                    {"number": 7, "title": "Fix it", "updated_at": "2026-02-03T01:00Z"},
+                    {"number": 5, "updated_at": None},
+                ]
+            )
+        )
+
+        result = await api.list_recent_references("owner", "repo", ReferenceType.PR)
+
+        assert [(o.value, o.label) for o in result] == [
+            ("7", "#7 Fix it (2026-02-03)"),
+            ("5", "#5  (unknown)"),
+        ]
+        params = mock_client.generic.call_args.kwargs["params"]
+        assert params["sort"] == "updated"
+        assert params["direction"] == "desc"
+        assert params["per_page"] == 20
+
+    async def test_commits(self, api_and_client):
+        """Test commits use short SHA, first message line and committer date."""
+        api, mock_client = api_and_client
+        mock_client.generic = AsyncMock(
+            return_value=create_mock_response(
+                [
+                    {
+                        "sha": "abcdef1234567",
+                        "commit": {
+                            "message": "Title\n\nBody",
+                            "committer": {"date": "2026-04-05T00:00:00Z"},
+                        },
+                    },
+                    {"sha": "1234567890abc", "commit": {}},
+                ]
+            )
+        )
+
+        result = await api.list_recent_references("owner", "repo", ReferenceType.COMMIT)
+
+        assert result[0].value == "abcdef1234567"
+        assert result[0].label == "abcdef1 Title (2026-04-05)"
+        assert result[1].label == "1234567  (unknown)"
+
+    async def test_not_found(self, api_and_client):
+        """Test not found errors are translated."""
+        api, mock_client = api_and_client
+        mock_client.generic = AsyncMock(
+            side_effect=GitHubNotFoundException("Not found")
+        )
+
+        with pytest.raises(GitHubAPIError, match="not found"):
+            await api.list_recent_references("owner", "repo", ReferenceType.PR)
 
 
 class TestGetDefaultBranch:
