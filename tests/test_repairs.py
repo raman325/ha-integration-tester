@@ -253,7 +253,9 @@ class TestIsRepairIssueAcknowledged:
 class TestAsyncCreateFixFlow:
     """Tests for async_create_fix_flow."""
 
-    @pytest.mark.parametrize("issue_id", [REPAIR_RESTART_REQUIRED, "restart_required_test"])
+    @pytest.mark.parametrize(
+        "issue_id", [REPAIR_RESTART_REQUIRED, "restart_required_test"]
+    )
     async def test_restart_required_flow(self, hass: HomeAssistant, issue_id: str):
         """Test creating restart required flow."""
         flow = await async_create_fix_flow(hass, issue_id, None)
