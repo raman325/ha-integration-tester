@@ -63,7 +63,7 @@ async def async_create_fix_flow(
     data: dict | None,
 ) -> RepairsFlow:
     """Create flow for fixing an issue."""
-    if issue_id.startswith("restart_required_"):
+    if issue_id == REPAIR_RESTART_REQUIRED or issue_id.startswith("restart_required_"):
         return RestartRequiredRepairFlow()
 
     if issue_id.startswith("pr_closed_") or issue_id.startswith("integration_removed_"):
@@ -81,17 +81,15 @@ def create_restart_required_issue(
     entry: ConfigEntry,
     domain: str,
 ) -> None:
-    """Create a repair issue indicating restart is required."""
+    """Create one non-persistent restart issue shared by all integrations."""
     ir.async_create_issue(
         hass,
         DOMAIN,
-        REPAIR_RESTART_REQUIRED.format(domain=domain),
+        REPAIR_RESTART_REQUIRED,
         is_fixable=True,
-        is_persistent=True,
+        is_persistent=False,
         severity=ir.IssueSeverity.WARNING,
         translation_key="restart_required",
-        translation_placeholders={"domain": domain},
-        data={"entry_id": entry.entry_id},
     )
 
 
@@ -100,8 +98,8 @@ def remove_restart_required_issue(
     hass: HomeAssistant,
     domain: str,
 ) -> None:
-    """Remove the restart required repair issue."""
-    ir.async_delete_issue(hass, DOMAIN, REPAIR_RESTART_REQUIRED.format(domain=domain))
+    """Remove a legacy per-integration issue without clearing the shared issue."""
+    ir.async_delete_issue(hass, DOMAIN, f"restart_required_{domain}")
 
 
 @callback

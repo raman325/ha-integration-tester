@@ -114,7 +114,7 @@ class PRState(StrEnum):
 
 
 # Repair issue IDs
-REPAIR_RESTART_REQUIRED: Final = "restart_required_{domain}"
+REPAIR_RESTART_REQUIRED: Final = "restart_required"
 REPAIR_PR_CLOSED: Final = "pr_closed_{domain}"
 REPAIR_INTEGRATION_REMOVED: Final = "integration_removed_{domain}"
 REPAIR_DOWNLOAD_FAILED: Final = "download_failed_{domain}"
