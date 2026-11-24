@@ -11,7 +11,17 @@ Download and install Home Assistant integrations from GitHub URLs. Test PRs, bra
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Recommended) - HA 2026.11+
+
+[![Open your Home Assistant instance and open a repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=raman325&repository=ha-integration-tester&category=Integration)
+
+1. Add this repository as a custom repository in the Marketplace
+2. Search for "Integration Tester" and install
+3. Restart Home Assistant
+
+### HACS (Deprecated) - HA pre 2026.11
+
+ [![Open your Home Assistant instance and open a repository in the Home Assistant Community Store.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=raman325&repository=ha-integration-tester&category=integration)
 
 1. Add this repository as a custom repository in HACS
 2. Search for "Integration Tester" and install
